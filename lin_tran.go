@@ -174,7 +174,7 @@ func (l *LinTranRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 		}
 	}
 
-	if _, ok := rgrad[l.Matrix.Data]; ok {
+	if !l.Input.Constant(rgrad, grad) {
 		dataDerivs := l.RData.ROutput()
 		data := l.RData.Output()
 		dataIdx := 0
