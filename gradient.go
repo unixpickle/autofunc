@@ -11,3 +11,8 @@ type Gradient map[*Variable]linalg.Vector
 // correspond to the derivatives of the components
 // of the gradient with respect to a variable r.
 type RGradient map[*Variable]linalg.Vector
+
+// An RVector specifies how much each variable
+// changes with respect to r for a given r-operator
+// propagation.
+type RVector map[*Variable]linalg.Vector
