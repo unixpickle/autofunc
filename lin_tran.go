@@ -140,18 +140,7 @@ func (l *LinTranRResult) ROutput() linalg.Vector {
 }
 
 func (l *LinTranRResult) Constant(rg RGradient, g Gradient) bool {
-	if !l.Input.Constant(rg, g) {
-		return false
-	}
-	if _, ok := rg[l.Matrix.Data]; ok {
-		return false
-	}
-	if g != nil {
-		if _, ok := g[l.Matrix.Data]; ok {
-			return false
-		}
-	}
-	return true
+	return l.Input.Constant(rg, g) && l.RData.Constant(rg, g)
 }
 
 func (l *LinTranRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
