@@ -193,7 +193,7 @@ func testFuncGradient(t *testing.T, f GradientTest) {
 				actual := grad[variable][elementIdx]
 				if math.Abs(actual-approxVec[outputIdx]) > funcTestPrec {
 					t.Errorf("var %d, output %d, entry %d: expected %f got %f",
-						varIdx, outputIdx, elementIdx, approxVec, actual)
+						varIdx, outputIdx, elementIdx, approxVec[outputIdx], actual)
 				}
 			}
 		}
