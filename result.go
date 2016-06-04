@@ -7,17 +7,17 @@ type Result interface {
 	// Output is the output from the function.
 	Output() linalg.Vector
 
+	// Constant returns true if this Result is
+	// constant with respect to all the variables
+	// in a given Gradient.
+	Constant(g Gradient) bool
+
 	// PropagateGradient performs back propagation
 	// through the function.
 	// The upstream argument provides partials of
 	// a value with respect to each of the outputs.
 	// The gradient of the result is added to grad.
 	PropagateGradient(upstream linalg.Vector, grad Gradient)
-
-	// Constant returns true if this Result is
-	// constant with respect to all the variables
-	// in a given Gradient.
-	Constant(g Gradient) bool
 }
 
 // RResult is like a Result, but is used propagate
