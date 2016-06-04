@@ -191,9 +191,10 @@ func testFuncGradient(t *testing.T, f GradientTest) {
 			approxVec := f.ApproxPartials(varPtr)
 			for outputIdx, grad := range jacobian {
 				actual := grad[variable][elementIdx]
-				if math.Abs(actual-approxVec[outputIdx]) > funcTestPrec {
+				expected := approxVec[outputIdx]
+				if math.Abs(actual-expected) > funcTestPrec {
 					t.Errorf("var %d, output %d, entry %d: expected %f got %f",
-						varIdx, outputIdx, elementIdx, approxVec[outputIdx], actual)
+						varIdx, outputIdx, elementIdx, expected, actual)
 				}
 			}
 		}
