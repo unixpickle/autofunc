@@ -263,3 +263,85 @@ func (s *ScaledRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 			rgrad, grad)
 	}
 }
+
+type ResultSquare struct {
+	OutputVec linalg.Vector
+	Input     Result
+}
+
+// Square squares every component of a Result.
+func Square(r Result) *ResultSquare {
+	rVec := r.Output()
+	out := make(linalg.Vector, len(rVec))
+	for i, x := range rVec {
+		out[i] = x * x
+	}
+	return &ResultSquare{
+		OutputVec: out,
+		Input:     r,
+	}
+}
+
+func (r *ResultSquare) Output() linalg.Vector {
+	return r.OutputVec
+}
+
+func (r *ResultSquare) Constant(g Gradient) bool {
+	return r.Input.Constant(g)
+}
+
+func (r *ResultSquare) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+	if !r.Input.Constant(grad) {
+		for i, x := range r.Input.Output() {
+			upstream[i] *= x * 2
+		}
+		r.Input.PropagateGradient(upstream, grad)
+	}
+}
+
+type RResultSquare struct {
+	OutputVec  linalg.Vector
+	ROutputVec linalg.Vector
+	Input      RResult
+}
+
+// SquareR squares every component of an RResult.
+func SquareR(r RResult) *RResultSquare {
+	vec := r.Output()
+	vecR := r.ROutput()
+	out := make(linalg.Vector, len(vec))
+	outR := make(linalg.Vector, len(vec))
+	for i, x := range vec {
+		out[i] = x * x
+		outR[i] = 2 * x * vecR[i]
+	}
+	return &RResultSquare{
+		OutputVec:  out,
+		ROutputVec: outR,
+		Input:      r,
+	}
+}
+
+func (r *RResultSquare) Output() linalg.Vector {
+	return r.OutputVec
+}
+
+func (r *RResultSquare) ROutput() linalg.Vector {
+	return r.ROutputVec
+}
+
+func (r *RResultSquare) Constant(rg RGradient, g Gradient) bool {
+	return r.Input.Constant(rg, g)
+}
+
+func (r *RResultSquare) PropagateRGradient(upstream, upstreamR linalg.Vector,
+	rgrad RGradient, grad Gradient) {
+	if !r.Input.Constant(rgrad, grad) {
+		inR := r.Input.ROutput()
+		for i, x := range r.Input.Output() {
+			upstreamR[i] = 2 * (upstreamR[i]*x + upstream[i]*inR[i])
+			upstream[i] *= x * 2
+		}
+		r.Input.PropagateRGradient(upstream, upstreamR, rgrad, grad)
+	}
+}
