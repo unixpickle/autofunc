@@ -17,6 +17,13 @@ type Result interface {
 	// The upstream argument provides partials of
 	// a value with respect to each of the outputs.
 	// The gradient of the result is added to grad.
+	//
+	// This routine may modify the contents of upstream and
+	// upstreamR internally, especially if doing so helps
+	// with performance.
+	// However, the caller regains ownership of upstream
+	// after this returns, so Results should not retain
+	// references to their upstream argument.
 	PropagateGradient(upstream linalg.Vector, grad Gradient)
 }
 
@@ -50,5 +57,12 @@ type RResult interface {
 	// like the grad argument for Result.PropagateGradient,
 	// thus taking advantage of the fact that r-propagation
 	// could easily compute the regular gradient as well.
+	//
+	// This routine may modify the contents of upstream and
+	// upstreamR internally, especially if doing so helps
+	// with performance.
+	// However, the caller regains ownership of upstream and
+	// upstreamR after this returns, so RResults should not
+	// retain references to their upstream arguments.
 	PropagateRGradient(upstream, upstreamR linalg.Vector, rgrad RGradient, grad Gradient)
 }

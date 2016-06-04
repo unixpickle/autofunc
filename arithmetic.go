@@ -197,3 +197,69 @@ func (r *RResultProduct) PropagateRGradient(upstream, upstreamR linalg.Vector,
 		r.R2.PropagateRGradient(downstream, downstreamR, rgrad, grad)
 	}
 }
+
+type ScaledResult struct {
+	OutputVec linalg.Vector
+	Scaler    float64
+	Input     Result
+}
+
+// Scale scales a Result component-wise.
+func Scale(r Result, f float64) *ScaledResult {
+	return &ScaledResult{
+		OutputVec: r.Output().Copy().Scale(f),
+		Scaler:    f,
+		Input:     r,
+	}
+}
+
+func (s *ScaledResult) Output() linalg.Vector {
+	return s.OutputVec
+}
+
+func (s *ScaledResult) Constant(g Gradient) bool {
+	return s.Input.Constant(g)
+}
+
+func (s *ScaledResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+	if !s.Input.Constant(grad) {
+		s.Input.PropagateGradient(upstream.Scale(s.Scaler), grad)
+	}
+}
+
+type ScaledRResult struct {
+	OutputVec  linalg.Vector
+	ROutputVec linalg.Vector
+	Scaler     float64
+	Input      RResult
+}
+
+// ScaleR scales an RResult component-wise.
+func ScaleR(r RResult, f float64) *ScaledRResult {
+	return &ScaledRResult{
+		OutputVec:  r.Output().Copy().Scale(f),
+		ROutputVec: r.ROutput().Copy().Scale(f),
+		Scaler:     f,
+		Input:      r,
+	}
+}
+
+func (s *ScaledRResult) Output() linalg.Vector {
+	return s.OutputVec
+}
+
+func (s *ScaledRResult) ROutput() linalg.Vector {
+	return s.ROutputVec
+}
+
+func (s *ScaledRResult) Constant(rg RGradient, g Gradient) bool {
+	return s.Input.Constant(rg, g)
+}
+
+func (s *ScaledRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+	rgrad RGradient, grad Gradient) {
+	if !s.Input.Constant(rgrad, grad) {
+		s.Input.PropagateRGradient(upstream.Scale(s.Scaler), upstreamR.Scale(s.Scaler),
+			rgrad, grad)
+	}
+}
