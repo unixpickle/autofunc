@@ -1,6 +1,10 @@
 package autofunc
 
-import "github.com/unixpickle/num-analysis/linalg"
+import (
+	"math"
+
+	"github.com/unixpickle/num-analysis/linalg"
+)
 
 type ResultSum struct {
 	OutputVec linalg.Vector
@@ -436,6 +440,105 @@ func (r *RResultInverse) PropagateRGradient(upstream, upstreamR linalg.Vector,
 			xR := inR[i]
 			upstream[i] = squared * u
 			upstreamR[i] = squared*uR + -2*(squared*output)*xR*u
+		}
+		r.Input.PropagateRGradient(upstream, upstreamR, rgrad, grad)
+	}
+}
+
+type ResultPow struct {
+	OutputVec linalg.Vector
+	Power     float64
+	Input     Result
+}
+
+// Pow raises each component of r to a given power.
+func Pow(r Result, pow float64) *ResultPow {
+	input := r.Output()
+	output := make(linalg.Vector, len(input))
+	for i, x := range input {
+		output[i] = math.Pow(x, pow)
+	}
+	return &ResultPow{
+		OutputVec: output,
+		Power:     pow,
+		Input:     r,
+	}
+}
+
+func (r *ResultPow) Output() linalg.Vector {
+	return r.OutputVec
+}
+
+func (r *ResultPow) Constant(g Gradient) bool {
+	return r.Power != 0 && r.Input.Constant(g)
+}
+
+func (r *ResultPow) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+	if !r.Constant(grad) {
+		if r.Power != 1 {
+			for i, x := range r.Input.Output() {
+				upstream[i] *= r.Power * math.Pow(x, r.Power-1)
+			}
+		}
+		r.Input.PropagateGradient(upstream, grad)
+	}
+}
+
+type RResultPow struct {
+	OutputVec  linalg.Vector
+	ROutputVec linalg.Vector
+	Power      float64
+	Input      RResult
+}
+
+// PowR is like Pow, but for RResults.
+func PowR(r RResult, pow float64) RResult {
+	input := r.Output()
+	inputR := r.ROutput()
+	output := make(linalg.Vector, len(input))
+	outputR := make(linalg.Vector, len(input))
+	for i, x := range input {
+		output[i] = math.Pow(x, pow)
+	}
+	if pow != 0 {
+		for i, x := range input {
+			xR := inputR[i]
+			outputR[i] = pow * math.Pow(x, pow-1) * xR
+		}
+	}
+	return &RResultPow{
+		OutputVec:  output,
+		ROutputVec: outputR,
+		Power:      pow,
+		Input:      r,
+	}
+}
+
+func (r *RResultPow) Output() linalg.Vector {
+	return r.OutputVec
+}
+
+func (r *RResultPow) ROutput() linalg.Vector {
+	return r.ROutputVec
+}
+
+func (r *RResultPow) Constant(rg RGradient, g Gradient) bool {
+	return r.Power != 0 && r.Input.Constant(rg, g)
+}
+
+func (r *RResultPow) PropagateRGradient(upstream, upstreamR linalg.Vector,
+	rgrad RGradient, grad Gradient) {
+	if !r.Constant(rgrad, grad) {
+		if r.Power != 1 {
+			inputR := r.Input.ROutput()
+			for i, x := range r.Input.Output() {
+				u := upstream[i]
+				uR := upstreamR[i]
+				funcDeriv := r.Power * math.Pow(x, r.Power-1)
+				funcDerivDeriv := r.Power * (r.Power - 1) * math.Pow(x, r.Power-2) * inputR[i]
+				upstream[i] = u * funcDeriv
+				upstreamR[i] = uR*funcDeriv + u*funcDerivDeriv
+			}
 		}
 		r.Input.PropagateRGradient(upstream, upstreamR, rgrad, grad)
 	}
