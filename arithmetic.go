@@ -48,6 +48,8 @@ func AddR(r1, r2 RResult) *RResultSum {
 	return &RResultSum{
 		OutputVec:  r1.Output().Copy().Add(r2.Output()),
 		ROutputVec: r1.ROutput().Copy().Add(r2.ROutput()),
+		R1:         r1,
+		R2:         r2,
 	}
 }
 
