@@ -347,3 +347,96 @@ func (r *RResultSquare) PropagateRGradient(upstream, upstreamR linalg.Vector,
 		r.Input.PropagateRGradient(upstream, upstreamR, rgrad, grad)
 	}
 }
+
+type ResultInverse struct {
+	OutputVec linalg.Vector
+	Input     Result
+}
+
+// Inverse computes component-wise reciprocals.
+// NaNs or Infs will result from 0-divisions.
+func Inverse(r Result) *ResultInverse {
+	inVec := r.Output()
+	outVec := make(linalg.Vector, len(inVec))
+	for i, x := range inVec {
+		outVec[i] = 1 / x
+	}
+	return &ResultInverse{
+		OutputVec: outVec,
+		Input:     r,
+	}
+}
+
+func (r *ResultInverse) Output() linalg.Vector {
+	return r.OutputVec
+}
+
+func (r *ResultInverse) Constant(g Gradient) bool {
+	return r.Input.Constant(g)
+}
+
+func (r *ResultInverse) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+	if !r.Input.Constant(grad) {
+		for i, x := range r.OutputVec {
+			upstream[i] *= -x * x
+		}
+		r.Input.PropagateGradient(upstream, grad)
+	}
+}
+
+type RResultInverse struct {
+	OutputVec  linalg.Vector
+	ROutputVec linalg.Vector
+	SquaredOut linalg.Vector
+	Input      RResult
+}
+
+// InverseR is like Inverse, but for RResults.
+func InverseR(r RResult) *RResultInverse {
+	inVec := r.Output()
+	inVecR := r.ROutput()
+	outVec := make(linalg.Vector, len(inVec))
+	outVecR := make(linalg.Vector, len(inVec))
+	squaredOut := make(linalg.Vector, len(inVec))
+	for i, x := range inVec {
+		recip := 1 / x
+		squared := recip * recip
+		outVec[i] = recip
+		squaredOut[i] = squared
+		outVecR[i] = -squared * inVecR[i]
+	}
+	return &RResultInverse{
+		OutputVec:  outVec,
+		ROutputVec: outVecR,
+		SquaredOut: squaredOut,
+		Input:      r,
+	}
+}
+
+func (r *RResultInverse) Output() linalg.Vector {
+	return r.OutputVec
+}
+
+func (r *RResultInverse) ROutput() linalg.Vector {
+	return r.ROutputVec
+}
+
+func (r *RResultInverse) Constant(rg RGradient, g Gradient) bool {
+	return r.Input.Constant(rg, g)
+}
+
+func (r *RResultInverse) PropagateRGradient(upstream, upstreamR linalg.Vector,
+	rgrad RGradient, grad Gradient) {
+	if !r.Input.Constant(rgrad, grad) {
+		inR := r.Input.ROutput()
+		for i, u := range upstream {
+			uR := upstreamR[i]
+			squared := -r.SquaredOut[i]
+			output := r.OutputVec[i]
+			xR := inR[i]
+			upstream[i] = squared * u
+			upstreamR[i] = squared*uR + -2*(squared*output)*xR*u
+		}
+		r.Input.PropagateRGradient(upstream, upstreamR, rgrad, grad)
+	}
+}
