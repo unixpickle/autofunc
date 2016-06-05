@@ -36,13 +36,14 @@ func (l *LSTMBenchmark) Run(b *testing.B, backProp bool) {
 	outputGrads := l.generateOutputs()
 
 	b.ResetTimer()
+	gradVal := net.AllocGradient()
 	for i := 0; i < b.N; i++ {
 		net.Reset()
 		for _, in := range inputs {
 			net.StepTime(in)
 		}
 		if backProp {
-			net.PropagateGradient(outputGrads)
+			net.PropagateGradient(outputGrads, gradVal)
 		}
 	}
 }
@@ -196,8 +197,8 @@ func (l *lstmNet) StepTime(sample linalg.Vector) linalg.Vector {
 	return result.Output()
 }
 
-func (l *lstmNet) PropagateGradient(outputGrad []linalg.Vector) autofunc.Gradient {
-	grad := autofunc.NewGradient([]*autofunc.Variable{
+func (l *lstmNet) AllocGradient() autofunc.Gradient {
+	return autofunc.NewGradient([]*autofunc.Variable{
 		l.OutputBiases.Var,
 		l.OutputGateBiases.Var,
 		l.OutputWeights.Data,
@@ -209,10 +210,12 @@ func (l *lstmNet) PropagateGradient(outputGrad []linalg.Vector) autofunc.Gradien
 		l.LSTM.InBiases.Var,
 		l.LSTM.InWeights.Data,
 	})
+}
 
+func (l *lstmNet) PropagateGradient(upstreams []linalg.Vector, grad autofunc.Gradient) {
 	stateGrad := make(linalg.Vector, l.StateSize)
-	for i := len(outputGrad) - 1; i >= 0; i-- {
-		upstream := outputGrad[i]
+	for i := len(upstreams) - 1; i >= 0; i-- {
+		upstream := upstreams[i]
 		output := l.outputs[i]
 		outStateVar := l.outputStateVars[i]
 		lastStateVar := l.inputStates[i]
@@ -228,8 +231,6 @@ func (l *lstmNet) PropagateGradient(outputGrad []linalg.Vector) autofunc.Gradien
 		stateGrad = grad[lastStateVar]
 		delete(grad, lastStateVar)
 	}
-
-	return grad
 }
 
 func (l *lstmNet) Reset() {
