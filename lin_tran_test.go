@@ -1,6 +1,7 @@
 package autofunc
 
 import (
+	"math"
 	"testing"
 
 	"github.com/unixpickle/num-analysis/linalg"
@@ -47,6 +48,16 @@ var linTranTestRVec = RVector{
 		0.45823, 0.66692, 0.14662,
 	}),
 	linTranTestVec: linalg.Vector([]float64{0, -1, 3, -7}),
+}
+
+func TestLinTranOutput(t *testing.T) {
+	res := linTranTestMat1.Apply(linTranTestVec)
+	expected := []float64{19, 20, 36}
+	for i, x := range expected {
+		if math.Abs(x-res.Output()[i]) > linTranTestPrec {
+			t.Errorf("bad output %d: expected %f got %f", i, x, res.Output()[i])
+		}
+	}
 }
 
 func TestLinTranGradient(t *testing.T) {

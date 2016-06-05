@@ -1,6 +1,10 @@
 package autofunc
 
-import "github.com/unixpickle/num-analysis/linalg"
+import (
+	"github.com/gonum/blas"
+	"github.com/gonum/blas/blas64"
+	"github.com/unixpickle/num-analysis/linalg"
+)
 
 // A LinTran is a Func and RFunc that represents
 // a linear transformation.
@@ -39,14 +43,23 @@ func (l *LinTran) ApplyR(v RVector, in RResult) RResult {
 
 func (l *LinTran) multiply(vec linalg.Vector) linalg.Vector {
 	res := make(linalg.Vector, l.Rows)
-	matData := l.Data.Output()
-	matIdx := 0
-	for i := range res {
-		for _, vecVal := range vec {
-			res[i] += matData[matIdx] * vecVal
-			matIdx++
-		}
+
+	mat := blas64.General{
+		Rows:   l.Rows,
+		Cols:   l.Cols,
+		Stride: l.Cols,
+		Data:   l.Data.Vector,
 	}
+	inVec := blas64.Vector{
+		Inc:  1,
+		Data: vec,
+	}
+	outVec := blas64.Vector{
+		Inc:  1,
+		Data: res,
+	}
+	blas64.Gemv(blas.NoTrans, 1, mat, inVec, 0, outVec)
+
 	return res
 }
 
@@ -69,26 +82,38 @@ func (l *LinTran) multiplyR(rData *RVariable, rVec RResult) linalg.Vector {
 }
 
 func (l *LinTran) dataGradient(upstream linalg.Vector, grad Gradient, input linalg.Vector) {
-	gradVal := grad[l.Data]
-	gradValIdx := 0
-	for _, partial := range upstream {
-		for col := 0; col < l.Cols; col++ {
-			gradVal[gradValIdx] += input[col] * partial
-			gradValIdx++
-		}
+	gradMat := blas64.General{
+		Data:   grad[l.Data],
+		Rows:   l.Rows,
+		Cols:   l.Cols,
+		Stride: l.Cols,
 	}
+	partialVec := blas64.Vector{
+		Data: upstream,
+		Inc:  1,
+	}
+	inputVec := blas64.Vector{
+		Data: input,
+		Inc:  1,
+	}
+	blas64.Ger(1, partialVec, inputVec, gradMat)
 }
 
 func (l *LinTran) inputGradient(upstream linalg.Vector) linalg.Vector {
 	matData := l.Data.Output()
 	matIdx := 0
+
 	gradVal := make(linalg.Vector, l.Cols)
+
+	matVector := blas64.Vector{Inc: 1}
+	gradVector := blas64.Vector{Data: gradVal, Inc: 1}
+
 	for _, partial := range upstream {
-		for col := 0; col < l.Cols; col++ {
-			gradVal[col] += partial * matData[matIdx]
-			matIdx++
-		}
+		matVector.Data = matData[matIdx:]
+		matIdx += l.Cols
+		blas64.Axpy(l.Cols, partial, matVector, gradVector)
 	}
+
 	return gradVal
 }
 
