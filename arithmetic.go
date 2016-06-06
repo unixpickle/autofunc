@@ -31,10 +31,17 @@ func (r *ResultSum) Constant(grad Gradient) bool {
 }
 
 func (r *ResultSum) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+	r2Const := r.R2.Constant(grad)
 	if !r.R1.Constant(grad) {
-		r.R1.PropagateGradient(upstream, grad)
+		if r2Const {
+			r.R1.PropagateGradient(upstream, grad)
+		} else {
+			backup := make(linalg.Vector, len(upstream))
+			copy(backup, upstream)
+			r.R1.PropagateGradient(backup, grad)
+		}
 	}
-	if !r.R2.Constant(grad) {
+	if !r2Const {
 		r.R2.PropagateGradient(upstream, grad)
 	}
 }
@@ -71,10 +78,19 @@ func (r *RResultSum) Constant(rg RGradient, g Gradient) bool {
 
 func (r *RResultSum) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
+	r2Const := r.R2.Constant(rgrad, grad)
 	if !r.R1.Constant(rgrad, grad) {
-		r.R1.PropagateRGradient(upstream, upstreamR, rgrad, grad)
+		if r2Const {
+			r.R1.PropagateRGradient(upstream, upstreamR, rgrad, grad)
+		} else {
+			backup := make(linalg.Vector, len(upstream))
+			backupR := make(linalg.Vector, len(upstreamR))
+			copy(backup, upstream)
+			copy(backupR, upstreamR)
+			r.R1.PropagateRGradient(backup, backupR, rgrad, grad)
+		}
 	}
-	if !r.R2.Constant(rgrad, grad) {
+	if !r2Const {
 		r.R2.PropagateRGradient(upstream, upstreamR, rgrad, grad)
 	}
 }
