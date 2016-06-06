@@ -190,3 +190,33 @@ func (s *SigmoidRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 
 	s.Input.PropagateRGradient(inGrad, inGradR, rgrad, grad)
 }
+
+// Softmax is a Func and RFunc which evaluates the
+// softmax function with a given temperature.
+type Softmax struct {
+	// Temperature is used to divide the input values
+	// before they are exponentiated.
+	// If the temperature is 0, then a temperature of 1
+	// is used like in the standard softmax function.
+	Temperature float64
+}
+
+func (s *Softmax) Apply(in Result) Result {
+	scaledInputs := in
+	if s.Temperature != 0 && s.Temperature != 1 {
+		scaledInputs = Scale(in, 1/s.Temperature)
+	}
+	exps := Exp{}.Apply(scaledInputs)
+	sum := SumAll(exps)
+	return ScaleFirst(exps, Inverse(sum))
+}
+
+func (s *Softmax) ApplyR(v RVector, in RResult) RResult {
+	scaledInputs := in
+	if s.Temperature != 0 && s.Temperature != 1 {
+		scaledInputs = ScaleR(in, 1/s.Temperature)
+	}
+	exps := Exp{}.ApplyR(v, scaledInputs)
+	sum := SumAllR(exps)
+	return ScaleFirstR(exps, InverseR(sum))
+}
