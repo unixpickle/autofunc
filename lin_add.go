@@ -42,9 +42,7 @@ func (l *LinAddResult) Output() linalg.Vector {
 
 func (l *LinAddResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	if sumGrad, ok := grad[l.SumVar]; ok {
-		for i, x := range upstream {
-			sumGrad[i] += x
-		}
+		sumGrad.Add(upstream)
 	}
 	if !l.Input.Constant(grad) {
 		l.Input.PropagateGradient(upstream, grad)
@@ -78,16 +76,12 @@ func (l *LinAddRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	if grad != nil {
 		if sumGrad, ok := grad[l.SumVar.Variable]; ok {
-			for i, x := range upstream {
-				sumGrad[i] += x
-			}
+			sumGrad.Add(upstream)
 		}
 	}
 
 	if sumGrad, ok := rgrad[l.SumVar.Variable]; ok {
-		for i, x := range upstreamR {
-			sumGrad[i] += x
-		}
+		sumGrad.Add(upstreamR)
 	}
 
 	if !l.Input.Constant(rgrad, grad) {
