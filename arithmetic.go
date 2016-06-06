@@ -95,6 +95,75 @@ func (r *RResultSum) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 }
 
+type AddScalerResult struct {
+	OutputVec linalg.Vector
+	Scaler    float64
+	Input     Result
+}
+
+// AddScaler adds a scaler to every component of a vector.
+func AddScaler(r Result, f float64) Result {
+	inVec := r.Output()
+	res := make(linalg.Vector, len(inVec))
+	for i, x := range inVec {
+		res[i] = x + f
+	}
+	return &AddScalerResult{
+		OutputVec: res,
+		Scaler:    f,
+		Input:     r,
+	}
+}
+
+func (a *AddScalerResult) Output() linalg.Vector {
+	return a.OutputVec
+}
+
+func (a *AddScalerResult) Constant(g Gradient) bool {
+	return a.Input.Constant(g)
+}
+
+func (a *AddScalerResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+	a.Input.PropagateGradient(upstream, grad)
+}
+
+type AddScalerRResult struct {
+	OutputVec linalg.Vector
+	Scaler    float64
+	Input     RResult
+}
+
+// AddScalerR is like AddScaler, but with RResults.
+func AddScalerR(r RResult, f float64) RResult {
+	inVec := r.Output()
+	res := make(linalg.Vector, len(inVec))
+	for i, x := range inVec {
+		res[i] = x + f
+	}
+	return &AddScalerRResult{
+		OutputVec: res,
+		Scaler:    f,
+		Input:     r,
+	}
+}
+
+func (a *AddScalerRResult) Output() linalg.Vector {
+	return a.OutputVec
+}
+
+func (a *AddScalerRResult) ROutput() linalg.Vector {
+	return a.Input.ROutput()
+}
+
+func (a *AddScalerRResult) Constant(rg RGradient, g Gradient) bool {
+	return a.Input.Constant(rg, g)
+}
+
+func (a *AddScalerRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+	rgrad RGradient, grad Gradient) {
+	a.Input.PropagateRGradient(upstream, upstreamR, rgrad, grad)
+}
+
 type ResultProduct struct {
 	OutputVec linalg.Vector
 

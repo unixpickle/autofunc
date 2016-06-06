@@ -43,7 +43,7 @@ type arithmeticTestFunc struct{}
 
 func (_ arithmeticTestFunc) Apply(r Result) Result {
 	sq1 := Square(Mul(Scale(Add(r, arithmeticTestVec1), -2), arithmeticTestVec2))
-	sum1 := Add(Mul(sq1, arithmeticTestVec3), Scale(arithmeticTestVec4, -0.5))
+	sum1 := AddScaler(Add(Mul(sq1, arithmeticTestVec3), Scale(arithmeticTestVec4, -0.5)), 2)
 	powed := Pow(Pow(Inverse(sum1), 2), 1/3.0)
 	allSum := SumAll(powed)
 	return ScaleFirst(arithmeticTestVec1, allSum)
@@ -55,7 +55,7 @@ func (_ arithmeticTestFunc) ApplyR(v RVector, r RResult) RResult {
 	rVec3 := NewRVariable(arithmeticTestVec3, v)
 	rVec4 := NewRVariable(arithmeticTestVec4, v)
 	sq1 := SquareR(MulR(ScaleR(AddR(r, rVec1), -2), rVec2))
-	sum1 := AddR(MulR(sq1, rVec3), ScaleR(rVec4, -0.5))
+	sum1 := AddScalerR(AddR(MulR(sq1, rVec3), ScaleR(rVec4, -0.5)), 2)
 	powed := PowR(PowR(InverseR(sum1), 2), 1/3.0)
 	allSum := SumAllR(powed)
 	return ScaleFirstR(rVec1, allSum)
