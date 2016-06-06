@@ -17,7 +17,7 @@ var (
 
 func TestExpGradient(t *testing.T) {
 	funcTest := &FuncTest{
-		F:     Exp{},
+		F:     ComposedFunc{Exp{}, AddTwice{}},
 		Vars:  mathFuncTestVars,
 		Input: mathFuncTestVec,
 	}
@@ -26,7 +26,7 @@ func TestExpGradient(t *testing.T) {
 
 func TestExpRGradient(t *testing.T) {
 	funcTest := &RFuncTest{
-		F:     Exp{},
+		F:     ComposedRFunc{Exp{}, AddTwice{}},
 		Vars:  mathFuncTestVars,
 		Input: NewRVariable(mathFuncTestVec, mathFuncTestRVec),
 		RV:    mathFuncTestRVec,
@@ -36,7 +36,7 @@ func TestExpRGradient(t *testing.T) {
 
 func TestSigmoidGradient(t *testing.T) {
 	funcTest := &FuncTest{
-		F:     ComposedFunc{Sigmoid{}, Sigmoid{}, Sigmoid{}},
+		F:     ComposedFunc{Sigmoid{}, Sigmoid{}, Sigmoid{}, AddTwice{}},
 		Vars:  mathFuncTestVars,
 		Input: mathFuncTestVec,
 	}
@@ -45,7 +45,7 @@ func TestSigmoidGradient(t *testing.T) {
 
 func TestSigmoidRGradient(t *testing.T) {
 	funcTest := &RFuncTest{
-		F:     ComposedRFunc{Sigmoid{}, Sigmoid{}, Sigmoid{}},
+		F:     ComposedRFunc{Sigmoid{}, Sigmoid{}, Sigmoid{}, AddTwice{}},
 		Vars:  mathFuncTestVars,
 		Input: NewRVariable(mathFuncTestVec, mathFuncTestRVec),
 		RV:    mathFuncTestRVec,
@@ -55,24 +55,24 @@ func TestSigmoidRGradient(t *testing.T) {
 
 func TestSoftmaxGradient(t *testing.T) {
 	funcTest := &FuncTest{
-		F:     &Softmax{},
+		F:     ComposedFunc{&Softmax{}, AddTwice{}},
 		Vars:  mathFuncTestVars,
 		Input: mathFuncTestVec,
 	}
 	funcTest.Run(t)
-	funcTest.F = &Softmax{3}
+	funcTest.F = ComposedFunc{&Softmax{3}, AddTwice{}}
 	funcTest.Run(t)
 }
 
 func TestSoftmaxRGradient(t *testing.T) {
 	funcTest := &RFuncTest{
-		F:     &Softmax{},
+		F:     ComposedRFunc{&Softmax{}, AddTwice{}},
 		Vars:  mathFuncTestVars,
 		Input: NewRVariable(mathFuncTestVec, mathFuncTestRVec),
 		RV:    mathFuncTestRVec,
 	}
 	funcTest.Run(t)
-	funcTest.F = &Softmax{3}
+	funcTest.F = ComposedRFunc{&Softmax{3}, AddTwice{}}
 	funcTest.Run(t)
 }
 

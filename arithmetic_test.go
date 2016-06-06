@@ -63,7 +63,7 @@ func (_ arithmeticTestFunc) ApplyR(v RVector, r RResult) RResult {
 
 func TestArithmeticGradients(t *testing.T) {
 	f := &FuncTest{
-		F:     arithmeticTestFunc{},
+		F:     ComposedFunc{arithmeticTestFunc{}, AddTwice{}},
 		Vars:  arithmeticTestVars,
 		Input: arithmeticTestVec4,
 	}
@@ -72,7 +72,7 @@ func TestArithmeticGradients(t *testing.T) {
 
 func TestArithmeticRGradients(t *testing.T) {
 	f := &RFuncTest{
-		F:     arithmeticTestFunc{},
+		F:     ComposedRFunc{arithmeticTestFunc{}, AddTwice{}},
 		Vars:  arithmeticTestVars,
 		Input: NewRVariable(arithmeticTestVec4, arithmeticTestRVec),
 		RV:    arithmeticTestRVec,

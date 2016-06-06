@@ -12,6 +12,16 @@ const (
 	funcTestPrec  = 1e-5
 )
 
+type AddTwice struct{}
+
+func (_ AddTwice) Apply(r Result) Result {
+	return Add(r, r)
+}
+
+func (_ AddTwice) ApplyR(v RVector, r RResult) RResult {
+	return AddR(r, r)
+}
+
 type GradientTest interface {
 	Variables() []*Variable
 	ApproxPartials(param *float64) linalg.Vector
