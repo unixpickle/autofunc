@@ -2,9 +2,9 @@ package autofunc
 
 import "github.com/unixpickle/num-analysis/linalg"
 
-// Result represents the output of a function.
+// Result represents the output of an operation.
 type Result interface {
-	// Output is the output from the function.
+	// Output is the output from the operation.
 	Output() linalg.Vector
 
 	// Constant returns true if this Result is
@@ -27,8 +27,9 @@ type Result interface {
 	PropagateGradient(upstream linalg.Vector, grad Gradient)
 }
 
-// RResult is like a Result, but is used propagate
-// R-operators rather than plain old gradients.
+// RResult is like a Result, but each value in an
+// RResult is associated with a derivative with
+// respect to some variable r.
 type RResult interface {
 	// Output is the output from the function.
 	Output() linalg.Vector

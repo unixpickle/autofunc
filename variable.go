@@ -2,6 +2,9 @@ package autofunc
 
 import "github.com/unixpickle/num-analysis/linalg"
 
+// A Variable is a numerical vector, wrapped in
+// a struct so pointers to it can be used as a
+// map key in things like Gradient.
 type Variable struct {
 	Vector linalg.Vector
 }

@@ -35,8 +35,9 @@ func (g RGradient) Zero() {
 }
 
 // An RVector specifies how much each variable
-// changes with respect to r for a given r-operator
-// propagation.
+// changes with respect to a variable r.
+// This is used for operating on RResults and
+// creating RVariables.
 type RVector map[*Variable]linalg.Vector
 
 // Zero resets all the values of the RVector to 0.
