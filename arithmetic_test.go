@@ -44,7 +44,8 @@ type arithmeticTestFunc struct{}
 func (_ arithmeticTestFunc) Apply(r Result) Result {
 	sq1 := Square(Mul(Scale(Add(r, arithmeticTestVec1), -2), arithmeticTestVec2))
 	sum1 := Add(Mul(sq1, arithmeticTestVec3), Scale(arithmeticTestVec4, -0.5))
-	return Pow(Pow(Inverse(sum1), 2), 1/3.0)
+	powed := Pow(Pow(Inverse(sum1), 2), 1/3.0)
+	return SumAll(powed)
 }
 
 func (_ arithmeticTestFunc) ApplyR(v RVector, r RResult) RResult {
@@ -54,7 +55,8 @@ func (_ arithmeticTestFunc) ApplyR(v RVector, r RResult) RResult {
 	rVec4 := NewRVariable(arithmeticTestVec4, v)
 	sq1 := SquareR(MulR(ScaleR(AddR(r, rVec1), -2), rVec2))
 	sum1 := AddR(MulR(sq1, rVec3), ScaleR(rVec4, -0.5))
-	return PowR(PowR(InverseR(sum1), 2), 1/3.0)
+	powed := PowR(PowR(InverseR(sum1), 2), 1/3.0)
+	return SumAllR(powed)
 }
 
 func TestArithmeticGradients(t *testing.T) {

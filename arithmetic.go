@@ -543,3 +543,88 @@ func (r *RResultPow) PropagateRGradient(upstream, upstreamR linalg.Vector,
 		r.Input.PropagateRGradient(upstream, upstreamR, rgrad, grad)
 	}
 }
+
+type SumAllResult struct {
+	OutputVec linalg.Vector
+	Input     Result
+}
+
+// SumAll adds up all the components of r and
+// returns a vector with that sum as its one
+// and only element.
+func SumAll(r Result) *SumAllResult {
+	var sum float64
+	for _, x := range r.Output() {
+		sum += x
+	}
+	return &SumAllResult{
+		OutputVec: linalg.Vector{sum},
+		Input:     r,
+	}
+}
+
+func (s *SumAllResult) Output() linalg.Vector {
+	return s.OutputVec
+}
+
+func (s *SumAllResult) Constant(g Gradient) bool {
+	return s.Input.Constant(g)
+}
+
+func (s *SumAllResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+	if !s.Input.Constant(grad) {
+		inLen := len(s.Input.Output())
+		downstream := make(linalg.Vector, inLen)
+		for i := range downstream {
+			downstream[i] = upstream[0]
+		}
+		s.Input.PropagateGradient(downstream, grad)
+	}
+}
+
+type SumAllRResult struct {
+	OutputVec  linalg.Vector
+	ROutputVec linalg.Vector
+	Input      RResult
+}
+
+// SumAllR is like SumAll, but for an RResult.
+func SumAllR(r RResult) *SumAllRResult {
+	var sum, rsum float64
+	routput := r.ROutput()
+	for i, x := range r.Output() {
+		sum += x
+		rsum += routput[i]
+	}
+	return &SumAllRResult{
+		OutputVec:  linalg.Vector{sum},
+		ROutputVec: linalg.Vector{rsum},
+		Input:      r,
+	}
+}
+
+func (s *SumAllRResult) Output() linalg.Vector {
+	return s.OutputVec
+}
+
+func (s *SumAllRResult) ROutput() linalg.Vector {
+	return s.ROutputVec
+}
+
+func (s *SumAllRResult) Constant(rg RGradient, g Gradient) bool {
+	return s.Input.Constant(rg, g)
+}
+
+func (s *SumAllRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+	rgrad RGradient, grad Gradient) {
+	if !s.Input.Constant(rgrad, grad) {
+		inLen := len(s.Input.Output())
+		downstream := make(linalg.Vector, inLen)
+		downstreamR := make(linalg.Vector, inLen)
+		for i := range downstream {
+			downstream[i] = upstream[0]
+			downstreamR[i] = upstreamR[0]
+		}
+		s.Input.PropagateRGradient(downstream, downstreamR, rgrad, grad)
+	}
+}
