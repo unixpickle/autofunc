@@ -101,18 +101,17 @@ func (l *LinTran) dataGradient(upstream linalg.Vector, grad Gradient, input lina
 
 func (l *LinTran) inputGradient(upstream linalg.Vector) linalg.Vector {
 	matData := l.Data.Output()
-	matIdx := 0
-
 	gradVal := make(linalg.Vector, l.Cols)
 
-	matVector := blas64.Vector{Inc: 1}
-	gradVector := blas64.Vector{Data: gradVal, Inc: 1}
-
-	for _, partial := range upstream {
-		matVector.Data = matData[matIdx:]
-		matIdx += l.Cols
-		blas64.Axpy(l.Cols, partial, matVector, gradVector)
+	matrix := blas64.General{
+		Rows:   l.Rows,
+		Cols:   l.Cols,
+		Stride: l.Cols,
+		Data:   matData,
 	}
+	vectorIn := blas64.Vector{Data: upstream, Inc: 1}
+	vectorOut := blas64.Vector{Data: gradVal, Inc: 1}
+	blas64.Gemv(blas.Trans, 1, matrix, vectorIn, 0, vectorOut)
 
 	return gradVal
 }
