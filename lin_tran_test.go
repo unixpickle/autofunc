@@ -62,7 +62,7 @@ func TestLinTranOutput(t *testing.T) {
 
 func TestLinTranGradient(t *testing.T) {
 	funcTest := &FuncTest{
-		F:     ComposedFunc{linTranTestMat1, linTranTestMat2},
+		F:     ComposedFunc{linTranTestMat1, linTranTestMat2, AddTwice{}},
 		Vars:  linTranTestVariables,
 		Input: linTranTestVec,
 	}
@@ -71,7 +71,7 @@ func TestLinTranGradient(t *testing.T) {
 
 func TestLinTranRGradient(t *testing.T) {
 	funcTest := &RFuncTest{
-		F:     ComposedRFunc{linTranTestMat1, linTranTestMat2},
+		F:     ComposedRFunc{linTranTestMat1, linTranTestMat2, AddTwice{}},
 		Vars:  linTranTestVariables,
 		Input: NewRVariable(linTranTestVec, linTranTestRVec),
 		RV:    linTranTestRVec,

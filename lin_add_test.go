@@ -17,7 +17,7 @@ var (
 )
 
 func TestLinAddGradient(t *testing.T) {
-	addFunc := ComposedFunc{&LinAdd{Var: linAddTestVec1}, &LinAdd{Var: linAddTestVec2}}
+	addFunc := ComposedFunc{&LinAdd{Var: linAddTestVec1}, &LinAdd{Var: linAddTestVec2}, AddTwice{}}
 	f := &FuncTest{
 		F:     addFunc,
 		Vars:  linAddTestVars,
@@ -27,7 +27,7 @@ func TestLinAddGradient(t *testing.T) {
 }
 
 func TestLinAddRGradient(t *testing.T) {
-	addFunc := ComposedRFunc{&LinAdd{Var: linAddTestVec1}, &LinAdd{Var: linAddTestVec2}}
+	addFunc := ComposedRFunc{&LinAdd{Var: linAddTestVec1}, &LinAdd{Var: linAddTestVec2}, AddTwice{}}
 	f := &RFuncTest{
 		F:     addFunc,
 		Vars:  linAddTestVars,
