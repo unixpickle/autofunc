@@ -270,6 +270,99 @@ func (s *ScaledRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 }
 
+type ScaleFirstResult struct {
+	OutputVec linalg.Vector
+	Scaler    Result
+	Input     Result
+}
+
+// ScaleFirstResult scales all the elements of
+// a vector by the first element of a vector.
+func ScaleFirst(in Result, scaler Result) *ScaleFirstResult {
+	f := scaler.Output()[0]
+	return &ScaleFirstResult{
+		OutputVec: in.Output().Copy().Scale(f),
+		Scaler:    scaler,
+		Input:     in,
+	}
+}
+
+func (s *ScaleFirstResult) Output() linalg.Vector {
+	return s.OutputVec
+}
+
+func (s *ScaleFirstResult) Constant(g Gradient) bool {
+	return s.Input.Constant(g) && s.Scaler.Constant(g)
+}
+
+func (s *ScaleFirstResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+	if !s.Scaler.Constant(grad) {
+		downstream := make(linalg.Vector, len(s.Scaler.Output()))
+		downstream[0] = upstream.DotFast(s.Input.Output())
+		s.Scaler.PropagateGradient(downstream, grad)
+	}
+
+	// This logic is intentionally done after propagating
+	// through s.Scaler so we can scale upstream in place.
+	if !s.Input.Constant(grad) {
+		scaler := s.Scaler.Output()[0]
+		s.Input.PropagateGradient(upstream.Scale(scaler), grad)
+	}
+}
+
+type ScaleFirstRResult struct {
+	OutputVec  linalg.Vector
+	ROutputVec linalg.Vector
+	Scaler     RResult
+	Input      RResult
+}
+
+// ScaleFirstR is like ScaleFirst, but for RResults.
+func ScaleFirstR(in RResult, scaler RResult) *ScaleFirstRResult {
+	f := scaler.Output()[0]
+	fR := scaler.ROutput()[0]
+	return &ScaleFirstRResult{
+		OutputVec:  in.Output().Copy().Scale(f),
+		ROutputVec: in.Output().Copy().Scale(fR).Add(in.ROutput().Copy().Scale(f)),
+		Scaler:     scaler,
+		Input:      in,
+	}
+}
+
+func (s *ScaleFirstRResult) Output() linalg.Vector {
+	return s.OutputVec
+}
+
+func (s *ScaleFirstRResult) ROutput() linalg.Vector {
+	return s.ROutputVec
+}
+
+func (s *ScaleFirstRResult) Constant(rg RGradient, g Gradient) bool {
+	return s.Input.Constant(rg, g) && s.Scaler.Constant(rg, g)
+}
+
+func (s *ScaleFirstRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+	rgrad RGradient, grad Gradient) {
+	if !s.Scaler.Constant(rgrad, grad) {
+		downstream := make(linalg.Vector, len(s.Scaler.Output()))
+		downstreamR := make(linalg.Vector, len(s.Scaler.ROutput()))
+		downstream[0] = upstream.DotFast(s.Input.Output())
+		downstreamR[0] = upstreamR.DotFast(s.Input.Output()) +
+			upstream.DotFast(s.Input.ROutput())
+		s.Scaler.PropagateRGradient(downstream, downstreamR, rgrad, grad)
+	}
+
+	// This is intentionally done after propagating s.Scaler.
+	// See ScaleFirstResult.PropagateGradient() for more.
+	if !s.Input.Constant(rgrad, grad) {
+		scaler := s.Scaler.Output()[0]
+		scalerR := s.Scaler.ROutput()[0]
+		upstreamR.Scale(scaler).Add(upstream.Copy().Scale(scalerR))
+		upstream.Scale(scaler)
+		s.Input.PropagateRGradient(upstream, upstreamR, rgrad, grad)
+	}
+}
+
 type ResultSquare struct {
 	OutputVec linalg.Vector
 	Input     Result
