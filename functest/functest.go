@@ -132,7 +132,7 @@ func (f *RFuncTest) Run(t *testing.T) {
 			for i, x := range expected {
 				a := actual[i]
 				if math.Abs(a-x) > funcTestPrec {
-					t.Errorf("var %d, output %d, entry %d: expected %f got %f",
+					t.Errorf("var %d, output %d, entry %d: expected %f got %f (r-gradient)",
 						varIdx, outIdx, i, x, a)
 				}
 			}
@@ -204,7 +204,7 @@ func testFuncGradient(t *testing.T, f GradientTest) {
 				actual := grad[variable][elementIdx]
 				expected := approxVec[outputIdx]
 				if math.Abs(actual-expected) > funcTestPrec {
-					t.Errorf("var %d, output %d, entry %d: expected %f got %f",
+					t.Errorf("var %d, output %d, entry %d: expected %f got %f (gradient)",
 						varIdx, outputIdx, elementIdx, expected, actual)
 				}
 			}
