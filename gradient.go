@@ -1,6 +1,9 @@
 package autofunc
 
-import "github.com/unixpickle/num-analysis/linalg"
+import (
+	"github.com/gonum/blas/blas64"
+	"github.com/unixpickle/num-analysis/linalg"
+)
 
 // A Gradient stores the rates of change of a
 // numerical quantity with respect to components
@@ -29,6 +32,23 @@ func (g Gradient) Add(g1 Gradient) {
 // Scale scales all the partials in g by f.
 func (g Gradient) Scale(f float64) {
 	scaleVariableMap(g, f)
+}
+
+// AddToVars performs gradient ascent, adding the
+// values from the gradient to their corresponding
+// variables.
+func (g Gradient) AddToVars(scale float64) {
+	for variable, grad := range g {
+		v1 := blas64.Vector{
+			Data: variable.Vector,
+			Inc:  1,
+		}
+		v2 := blas64.Vector{
+			Data: grad,
+			Inc:  1,
+		}
+		blas64.Axpy(len(grad), scale, v2, v1)
+	}
 }
 
 // An RGradient is like a Gradient, but its entries
@@ -77,8 +97,15 @@ func zeroVariableMap(m map[*Variable]linalg.Vector) {
 
 func addVariableMaps(m, m1 map[*Variable]linalg.Vector) {
 	for k, v := range m {
-		v1 := m1[k]
-		v.Add(v1)
+		vVector := blas64.Vector{
+			Data: v,
+			Inc:  1,
+		}
+		v1Vector := blas64.Vector{
+			Data: m1[k],
+			Inc:  1,
+		}
+		blas64.Axpy(len(v), 1, v1Vector, vVector)
 	}
 }
 
