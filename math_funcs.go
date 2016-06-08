@@ -16,7 +16,7 @@ func (_ Exp) Apply(in Result) Result {
 	for i, x := range input {
 		output[i] = math.Exp(x)
 	}
-	return &ExpResult{
+	return &expResult{
 		OutputVec: output,
 		Input:     in,
 	}
@@ -32,27 +32,27 @@ func (_ Exp) ApplyR(v RVector, in RResult) RResult {
 		output[i] = exp
 		outputR[i] = exp * inputR[i]
 	}
-	return &ExpRResult{
+	return &expRResult{
 		OutputVec:  output,
 		ROutputVec: outputR,
 		Input:      in,
 	}
 }
 
-type ExpResult struct {
+type expResult struct {
 	OutputVec linalg.Vector
 	Input     Result
 }
 
-func (e *ExpResult) Output() linalg.Vector {
+func (e *expResult) Output() linalg.Vector {
 	return e.OutputVec
 }
 
-func (e *ExpResult) Constant(g Gradient) bool {
+func (e *expResult) Constant(g Gradient) bool {
 	return e.Input.Constant(g)
 }
 
-func (e *ExpResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+func (e *expResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	if !e.Input.Constant(grad) {
 		for i, x := range e.OutputVec {
 			upstream[i] *= x
@@ -61,25 +61,25 @@ func (e *ExpResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	}
 }
 
-type ExpRResult struct {
+type expRResult struct {
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	Input      RResult
 }
 
-func (e *ExpRResult) Output() linalg.Vector {
+func (e *expRResult) Output() linalg.Vector {
 	return e.OutputVec
 }
 
-func (e *ExpRResult) ROutput() linalg.Vector {
+func (e *expRResult) ROutput() linalg.Vector {
 	return e.ROutputVec
 }
 
-func (e *ExpRResult) Constant(rg RGradient, g Gradient) bool {
+func (e *expRResult) Constant(rg RGradient, g Gradient) bool {
 	return e.Input.Constant(rg, g)
 }
 
-func (e *ExpRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+func (e *expRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	if !e.Input.Constant(rgrad, grad) {
 		rOut := e.ROutputVec
@@ -105,7 +105,7 @@ func (_ Log) Apply(in Result) Result {
 	for i, in := range inVec {
 		outVec[i] = math.Log(in)
 	}
-	return &LogResult{
+	return &logResult{
 		OutputVec: outVec,
 		Input:     in,
 	}
@@ -120,27 +120,27 @@ func (_ Log) ApplyR(v RVector, in RResult) RResult {
 		outVec[i] = math.Log(in)
 		outVecR[i] = inVecR[i] / in
 	}
-	return &LogRResult{
+	return &logRResult{
 		OutputVec:  outVec,
 		ROutputVec: outVecR,
 		Input:      in,
 	}
 }
 
-type LogResult struct {
+type logResult struct {
 	OutputVec linalg.Vector
 	Input     Result
 }
 
-func (l *LogResult) Output() linalg.Vector {
+func (l *logResult) Output() linalg.Vector {
 	return l.OutputVec
 }
 
-func (l *LogResult) Constant(g Gradient) bool {
+func (l *logResult) Constant(g Gradient) bool {
 	return l.Input.Constant(g)
 }
 
-func (l *LogResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+func (l *logResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	if l.Input.Constant(grad) {
 		return
 	}
@@ -151,25 +151,25 @@ func (l *LogResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	l.Input.PropagateGradient(upstream, grad)
 }
 
-type LogRResult struct {
+type logRResult struct {
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	Input      RResult
 }
 
-func (l *LogRResult) Output() linalg.Vector {
+func (l *logRResult) Output() linalg.Vector {
 	return l.OutputVec
 }
 
-func (l *LogRResult) ROutput() linalg.Vector {
+func (l *logRResult) ROutput() linalg.Vector {
 	return l.ROutputVec
 }
 
-func (l *LogRResult) Constant(rg RGradient, g Gradient) bool {
+func (l *logRResult) Constant(rg RGradient, g Gradient) bool {
 	return l.Input.Constant(rg, g)
 }
 
-func (l *LogRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+func (l *logRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	if l.Input.Constant(rgrad, grad) {
 		return
@@ -208,7 +208,7 @@ func (s Sigmoid) Apply(in Result) Result {
 	for i, x := range inVec {
 		res[i] = 1 / (1 + math.Exp(-x))
 	}
-	return &SigmoidResult{
+	return &sigmoidResult{
 		OutputVec: res,
 		Input:     in,
 	}
@@ -224,23 +224,23 @@ func (s Sigmoid) ApplyR(v RVector, in RResult) RResult {
 		res[i] = sigVal
 		resR[i] = sigVal * (1 - sigVal) * inVecR[i]
 	}
-	return &SigmoidRResult{
+	return &sigmoidRResult{
 		OutputVec:  res,
 		ROutputVec: resR,
 		Input:      in,
 	}
 }
 
-type SigmoidResult struct {
+type sigmoidResult struct {
 	OutputVec linalg.Vector
 	Input     Result
 }
 
-func (s *SigmoidResult) Output() linalg.Vector {
+func (s *sigmoidResult) Output() linalg.Vector {
 	return s.OutputVec
 }
 
-func (s *SigmoidResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+func (s *sigmoidResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	if !s.Input.Constant(grad) {
 		inGrad := make(linalg.Vector, len(s.OutputVec))
 		for i, x := range s.OutputVec {
@@ -250,29 +250,29 @@ func (s *SigmoidResult) PropagateGradient(upstream linalg.Vector, grad Gradient)
 	}
 }
 
-func (s *SigmoidResult) Constant(g Gradient) bool {
+func (s *sigmoidResult) Constant(g Gradient) bool {
 	return s.Input.Constant(g)
 }
 
-type SigmoidRResult struct {
+type sigmoidRResult struct {
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	Input      RResult
 }
 
-func (s *SigmoidRResult) Output() linalg.Vector {
+func (s *sigmoidRResult) Output() linalg.Vector {
 	return s.OutputVec
 }
 
-func (s *SigmoidRResult) ROutput() linalg.Vector {
+func (s *sigmoidRResult) ROutput() linalg.Vector {
 	return s.ROutputVec
 }
 
-func (s *SigmoidRResult) Constant(rg RGradient, g Gradient) bool {
+func (s *sigmoidRResult) Constant(rg RGradient, g Gradient) bool {
 	return s.Input.Constant(rg, g)
 }
 
-func (s *SigmoidRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+func (s *sigmoidRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	if s.Input.Constant(rgrad, grad) {
 		return

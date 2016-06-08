@@ -2,7 +2,7 @@ package autofunc
 
 import "github.com/unixpickle/num-analysis/linalg"
 
-type JoinedResults struct {
+type joinedResults struct {
 	OutputVec linalg.Vector
 	Results   []Result
 }
@@ -10,7 +10,7 @@ type JoinedResults struct {
 // Concat joins the outputs of several Results.
 // The results are concatenated first to last,
 // so Concat({1,2,3}, {4,5,6}) = {1,2,3,4,5,6}.
-func Concat(rs ...Result) *JoinedResults {
+func Concat(rs ...Result) Result {
 	outputs := make([]linalg.Vector, len(rs))
 	var totalLen int
 	for i, x := range rs {
@@ -25,17 +25,17 @@ func Concat(rs ...Result) *JoinedResults {
 		vecIdx += len(x)
 	}
 
-	return &JoinedResults{
+	return &joinedResults{
 		OutputVec: outVec,
 		Results:   rs,
 	}
 }
 
-func (j *JoinedResults) Output() linalg.Vector {
+func (j *joinedResults) Output() linalg.Vector {
 	return j.OutputVec
 }
 
-func (j *JoinedResults) Constant(g Gradient) bool {
+func (j *joinedResults) Constant(g Gradient) bool {
 	for _, x := range j.Results {
 		if !x.Constant(g) {
 			return false
@@ -44,7 +44,7 @@ func (j *JoinedResults) Constant(g Gradient) bool {
 	return true
 }
 
-func (j *JoinedResults) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+func (j *joinedResults) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	vecIdx := 0
 	for _, x := range j.Results {
 		if !x.Constant(grad) {
@@ -55,14 +55,14 @@ func (j *JoinedResults) PropagateGradient(upstream linalg.Vector, grad Gradient)
 	}
 }
 
-type JoinedRResults struct {
+type joinedRResults struct {
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	Results    []RResult
 }
 
 // ConcatR is like Concat, but for RResults.
-func ConcatR(rs ...RResult) *JoinedRResults {
+func ConcatR(rs ...RResult) RResult {
 	outputs := make([]linalg.Vector, len(rs))
 	routputs := make([]linalg.Vector, len(rs))
 	var totalLen int
@@ -81,22 +81,22 @@ func ConcatR(rs ...RResult) *JoinedRResults {
 		vecIdx += len(x)
 	}
 
-	return &JoinedRResults{
+	return &joinedRResults{
 		OutputVec:  outVec,
 		ROutputVec: outVecR,
 		Results:    rs,
 	}
 }
 
-func (j *JoinedRResults) Output() linalg.Vector {
+func (j *joinedRResults) Output() linalg.Vector {
 	return j.OutputVec
 }
 
-func (j *JoinedRResults) ROutput() linalg.Vector {
+func (j *joinedRResults) ROutput() linalg.Vector {
 	return j.ROutputVec
 }
 
-func (j *JoinedRResults) Constant(rg RGradient, g Gradient) bool {
+func (j *joinedRResults) Constant(rg RGradient, g Gradient) bool {
 	for _, x := range j.Results {
 		if !x.Constant(rg, g) {
 			return false
@@ -105,7 +105,7 @@ func (j *JoinedRResults) Constant(rg RGradient, g Gradient) bool {
 	return true
 }
 
-func (j *JoinedRResults) PropagateRGradient(upstream, upstreamR linalg.Vector,
+func (j *joinedRResults) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	vecIdx := 0
 	for _, x := range j.Results {

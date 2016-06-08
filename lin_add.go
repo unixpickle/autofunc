@@ -9,20 +9,19 @@ type LinAdd struct {
 }
 
 // Apply applies the addition operation to
-// the input, returning a *LinAddResult.
+// the input.
 func (l LinAdd) Apply(in Result) Result {
-	return &LinAddResult{
+	return &linAddResult{
 		OutputVec: in.Output().Copy().Add(l.Var.Vector),
 		SumVar:    l.Var,
 		Input:     in,
 	}
 }
 
-// ApplyR is like Apply, but acts on RResults
-// and returns *LinAddRResult.
+// ApplyR is like Apply but for RResults.
 func (l LinAdd) ApplyR(v RVector, in RResult) RResult {
 	rVar := NewRVariable(l.Var, v)
-	return &LinAddRResult{
+	return &linAddRResult{
 		OutputVec:  in.Output().Copy().Add(l.Var.Vector),
 		ROutputVec: in.ROutput().Copy().Add(rVar.ROutput()),
 		SumVar:     rVar,
@@ -30,17 +29,17 @@ func (l LinAdd) ApplyR(v RVector, in RResult) RResult {
 	}
 }
 
-type LinAddResult struct {
+type linAddResult struct {
 	OutputVec linalg.Vector
 	SumVar    *Variable
 	Input     Result
 }
 
-func (l *LinAddResult) Output() linalg.Vector {
+func (l *linAddResult) Output() linalg.Vector {
 	return l.OutputVec
 }
 
-func (l *LinAddResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+func (l *linAddResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	if sumGrad, ok := grad[l.SumVar]; ok {
 		sumGrad.Add(upstream)
 	}
@@ -49,30 +48,30 @@ func (l *LinAddResult) PropagateGradient(upstream linalg.Vector, grad Gradient) 
 	}
 }
 
-func (l *LinAddResult) Constant(g Gradient) bool {
+func (l *linAddResult) Constant(g Gradient) bool {
 	return l.Input.Constant(g) && l.SumVar.Constant(g)
 }
 
-type LinAddRResult struct {
+type linAddRResult struct {
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	SumVar     *RVariable
 	Input      RResult
 }
 
-func (l *LinAddRResult) Output() linalg.Vector {
+func (l *linAddRResult) Output() linalg.Vector {
 	return l.OutputVec
 }
 
-func (l *LinAddRResult) ROutput() linalg.Vector {
+func (l *linAddRResult) ROutput() linalg.Vector {
 	return l.ROutputVec
 }
 
-func (l *LinAddRResult) Constant(rg RGradient, g Gradient) bool {
+func (l *linAddRResult) Constant(rg RGradient, g Gradient) bool {
 	return l.SumVar.Constant(rg, g) && l.Input.Constant(rg, g)
 }
 
-func (l *LinAddRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+func (l *linAddRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	if grad != nil {
 		if sumGrad, ok := grad[l.SumVar.Variable]; ok {

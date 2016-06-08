@@ -18,21 +18,19 @@ type LinTran struct {
 	Cols int
 }
 
-// Apply performs matrix multiplication (i.e. m*in)
-// and returns the result as a *LinTranResult.
+// Apply performs matrix multiplication (i.e. m*in).
 func (l *LinTran) Apply(in Result) Result {
-	return &LinTranResult{
+	return &linTranResult{
 		Matrix:    l,
 		Input:     in,
 		OutputVec: l.multiply(in.Output()),
 	}
 }
 
-// ApplyR is like Apply, but generates a
-// *LinTranRResult to reflect r-operator information.
+// ApplyR is like Apply but for RResults.
 func (l *LinTran) ApplyR(v RVector, in RResult) RResult {
 	rData := NewRVariable(l.Data, v)
-	return &LinTranRResult{
+	return &linTranRResult{
 		Matrix:     l,
 		OutputVec:  l.multiply(in.Output()),
 		ROutputVec: l.multiplyR(rData, in),
@@ -116,19 +114,19 @@ func (l *LinTran) inputGradient(upstream linalg.Vector) linalg.Vector {
 	return gradVal
 }
 
-// LinTranResult represents the result of applying
+// linTranResult represents the result of applying
 // a LinTran to a Result.
-type LinTranResult struct {
+type linTranResult struct {
 	OutputVec linalg.Vector
 	Input     Result
 	Matrix    *LinTran
 }
 
-func (l *LinTranResult) Output() linalg.Vector {
+func (l *linTranResult) Output() linalg.Vector {
 	return l.OutputVec
 }
 
-func (l *LinTranResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+func (l *linTranResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	if len(upstream) != l.Matrix.Rows {
 		panic("output dimension mismatch")
 	}
@@ -143,11 +141,11 @@ func (l *LinTranResult) PropagateGradient(upstream linalg.Vector, grad Gradient)
 	}
 }
 
-func (l *LinTranResult) Constant(g Gradient) bool {
+func (l *linTranResult) Constant(g Gradient) bool {
 	return l.Matrix.Data.Constant(g) && l.Input.Constant(g)
 }
 
-type LinTranRResult struct {
+type linTranRResult struct {
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	Input      RResult
@@ -155,19 +153,19 @@ type LinTranRResult struct {
 	Matrix     *LinTran
 }
 
-func (l *LinTranRResult) Output() linalg.Vector {
+func (l *linTranRResult) Output() linalg.Vector {
 	return l.OutputVec
 }
 
-func (l *LinTranRResult) ROutput() linalg.Vector {
+func (l *linTranRResult) ROutput() linalg.Vector {
 	return l.ROutputVec
 }
 
-func (l *LinTranRResult) Constant(rg RGradient, g Gradient) bool {
+func (l *linTranRResult) Constant(rg RGradient, g Gradient) bool {
 	return l.Input.Constant(rg, g) && l.RData.Constant(rg, g)
 }
 
-func (l *LinTranRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+func (l *linTranRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	if grad != nil && !l.Matrix.Data.Constant(grad) {
 		l.Matrix.dataGradient(upstream, grad, l.Input.Output())
