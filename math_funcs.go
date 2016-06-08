@@ -185,6 +185,18 @@ func (l *LogRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	l.Input.PropagateRGradient(upstream, upstreamR, rgrad, grad)
 }
 
+// SquaredNorm is a Func and RFunc which computes
+// the squared Euclidean norm of its input.
+type SquaredNorm struct{}
+
+func (_ SquaredNorm) Apply(r Result) Result {
+	return SumAll(Square(r))
+}
+
+func (_ SquaredNorm) ApplyR(v RVector, r RResult) RResult {
+	return SumAllR(SquareR(r))
+}
+
 // Sigmoid is a Func and RFunc which applies
 // the logistic sigmoid function 1/(1+exp(-x))
 // to every component in its input vector.
