@@ -6,7 +6,7 @@ import (
 	"github.com/unixpickle/num-analysis/linalg"
 )
 
-type ResultSum struct {
+type resultSum struct {
 	OutputVec linalg.Vector
 
 	R1 Result
@@ -14,23 +14,23 @@ type ResultSum struct {
 }
 
 // Add adds two Results.
-func Add(r1, r2 Result) *ResultSum {
-	return &ResultSum{
+func Add(r1, r2 Result) Result {
+	return &resultSum{
 		OutputVec: r1.Output().Copy().Add(r2.Output()),
 		R1:        r1,
 		R2:        r2,
 	}
 }
 
-func (r *ResultSum) Output() linalg.Vector {
+func (r *resultSum) Output() linalg.Vector {
 	return r.OutputVec
 }
 
-func (r *ResultSum) Constant(grad Gradient) bool {
+func (r *resultSum) Constant(grad Gradient) bool {
 	return r.R1.Constant(grad) && r.R2.Constant(grad)
 }
 
-func (r *ResultSum) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+func (r *resultSum) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	r2Const := r.R2.Constant(grad)
 	if !r.R1.Constant(grad) {
 		if r2Const {
@@ -46,7 +46,7 @@ func (r *ResultSum) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	}
 }
 
-type RResultSum struct {
+type rresultSum struct {
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 
@@ -55,8 +55,8 @@ type RResultSum struct {
 }
 
 // AddR adds two RResults.
-func AddR(r1, r2 RResult) *RResultSum {
-	return &RResultSum{
+func AddR(r1, r2 RResult) RResult {
+	return &rresultSum{
 		OutputVec:  r1.Output().Copy().Add(r2.Output()),
 		ROutputVec: r1.ROutput().Copy().Add(r2.ROutput()),
 		R1:         r1,
@@ -64,19 +64,19 @@ func AddR(r1, r2 RResult) *RResultSum {
 	}
 }
 
-func (r *RResultSum) Output() linalg.Vector {
+func (r *rresultSum) Output() linalg.Vector {
 	return r.OutputVec
 }
 
-func (r *RResultSum) ROutput() linalg.Vector {
+func (r *rresultSum) ROutput() linalg.Vector {
 	return r.ROutputVec
 }
 
-func (r *RResultSum) Constant(rg RGradient, g Gradient) bool {
+func (r *rresultSum) Constant(rg RGradient, g Gradient) bool {
 	return r.R1.Constant(rg, g) && r.R2.Constant(rg, g)
 }
 
-func (r *RResultSum) PropagateRGradient(upstream, upstreamR linalg.Vector,
+func (r *rresultSum) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	r2Const := r.R2.Constant(rgrad, grad)
 	if !r.R1.Constant(rgrad, grad) {
@@ -95,7 +95,7 @@ func (r *RResultSum) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 }
 
-type AddScalerResult struct {
+type addScalerResult struct {
 	OutputVec linalg.Vector
 	Scaler    float64
 	Input     Result
@@ -108,26 +108,26 @@ func AddScaler(r Result, f float64) Result {
 	for i, x := range inVec {
 		res[i] = x + f
 	}
-	return &AddScalerResult{
+	return &addScalerResult{
 		OutputVec: res,
 		Scaler:    f,
 		Input:     r,
 	}
 }
 
-func (a *AddScalerResult) Output() linalg.Vector {
+func (a *addScalerResult) Output() linalg.Vector {
 	return a.OutputVec
 }
 
-func (a *AddScalerResult) Constant(g Gradient) bool {
+func (a *addScalerResult) Constant(g Gradient) bool {
 	return a.Input.Constant(g)
 }
 
-func (a *AddScalerResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+func (a *addScalerResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	a.Input.PropagateGradient(upstream, grad)
 }
 
-type AddScalerRResult struct {
+type addScalerRResult struct {
 	OutputVec linalg.Vector
 	Scaler    float64
 	Input     RResult
@@ -140,31 +140,31 @@ func AddScalerR(r RResult, f float64) RResult {
 	for i, x := range inVec {
 		res[i] = x + f
 	}
-	return &AddScalerRResult{
+	return &addScalerRResult{
 		OutputVec: res,
 		Scaler:    f,
 		Input:     r,
 	}
 }
 
-func (a *AddScalerRResult) Output() linalg.Vector {
+func (a *addScalerRResult) Output() linalg.Vector {
 	return a.OutputVec
 }
 
-func (a *AddScalerRResult) ROutput() linalg.Vector {
+func (a *addScalerRResult) ROutput() linalg.Vector {
 	return a.Input.ROutput()
 }
 
-func (a *AddScalerRResult) Constant(rg RGradient, g Gradient) bool {
+func (a *addScalerRResult) Constant(rg RGradient, g Gradient) bool {
 	return a.Input.Constant(rg, g)
 }
 
-func (a *AddScalerRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+func (a *addScalerRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	a.Input.PropagateRGradient(upstream, upstreamR, rgrad, grad)
 }
 
-type ResultProduct struct {
+type resultProduct struct {
 	OutputVec linalg.Vector
 
 	R1 Result
@@ -172,7 +172,7 @@ type ResultProduct struct {
 }
 
 // Mul multiplies two Results component-wise.
-func Mul(r1, r2 Result) *ResultProduct {
+func Mul(r1, r2 Result) Result {
 	r1Output := r1.Output()
 	r2Output := r2.Output()
 	if len(r1Output) != len(r2Output) {
@@ -182,22 +182,22 @@ func Mul(r1, r2 Result) *ResultProduct {
 	for i, x := range r1Output {
 		product[i] = x * r2Output[i]
 	}
-	return &ResultProduct{
+	return &resultProduct{
 		OutputVec: product,
 		R1:        r1,
 		R2:        r2,
 	}
 }
 
-func (r *ResultProduct) Output() linalg.Vector {
+func (r *resultProduct) Output() linalg.Vector {
 	return r.OutputVec
 }
 
-func (r *ResultProduct) Constant(g Gradient) bool {
+func (r *resultProduct) Constant(g Gradient) bool {
 	return r.R1.Constant(g) && r.R2.Constant(g)
 }
 
-func (r *ResultProduct) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+func (r *resultProduct) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	downstream := make(linalg.Vector, len(upstream))
 
 	if !r.R1.Constant(grad) {
@@ -217,7 +217,7 @@ func (r *ResultProduct) PropagateGradient(upstream linalg.Vector, grad Gradient)
 	}
 }
 
-type RResultProduct struct {
+type rresultProduct struct {
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 
@@ -226,7 +226,7 @@ type RResultProduct struct {
 }
 
 // MulR multiplies two RResults component-wise.
-func MulR(r1, r2 RResult) *RResultProduct {
+func MulR(r1, r2 RResult) RResult {
 	r1Output := r1.Output()
 	r1OutputR := r1.ROutput()
 	r2Output := r2.Output()
@@ -241,7 +241,7 @@ func MulR(r1, r2 RResult) *RResultProduct {
 		product[i] = x * y
 		productR[i] = x*r2OutputR[i] + r1OutputR[i]*y
 	}
-	return &RResultProduct{
+	return &rresultProduct{
 		OutputVec:  product,
 		ROutputVec: productR,
 		R1:         r1,
@@ -249,19 +249,19 @@ func MulR(r1, r2 RResult) *RResultProduct {
 	}
 }
 
-func (r *RResultProduct) Output() linalg.Vector {
+func (r *rresultProduct) Output() linalg.Vector {
 	return r.OutputVec
 }
 
-func (r *RResultProduct) ROutput() linalg.Vector {
+func (r *rresultProduct) ROutput() linalg.Vector {
 	return r.ROutputVec
 }
 
-func (r *RResultProduct) Constant(rg RGradient, g Gradient) bool {
+func (r *rresultProduct) Constant(rg RGradient, g Gradient) bool {
 	return r.R1.Constant(rg, g) && r.R2.Constant(rg, g)
 }
 
-func (r *RResultProduct) PropagateRGradient(upstream, upstreamR linalg.Vector,
+func (r *rresultProduct) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	downstream := make(linalg.Vector, len(upstream))
 	downstreamR := make(linalg.Vector, len(upstream))
@@ -289,36 +289,36 @@ func (r *RResultProduct) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 }
 
-type ScaledResult struct {
+type scaledResult struct {
 	OutputVec linalg.Vector
 	Scaler    float64
 	Input     Result
 }
 
 // Scale scales a Result component-wise.
-func Scale(r Result, f float64) *ScaledResult {
-	return &ScaledResult{
+func Scale(r Result, f float64) Result {
+	return &scaledResult{
 		OutputVec: r.Output().Copy().Scale(f),
 		Scaler:    f,
 		Input:     r,
 	}
 }
 
-func (s *ScaledResult) Output() linalg.Vector {
+func (s *scaledResult) Output() linalg.Vector {
 	return s.OutputVec
 }
 
-func (s *ScaledResult) Constant(g Gradient) bool {
+func (s *scaledResult) Constant(g Gradient) bool {
 	return s.Input.Constant(g)
 }
 
-func (s *ScaledResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+func (s *scaledResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	if !s.Input.Constant(grad) {
 		s.Input.PropagateGradient(upstream.Scale(s.Scaler), grad)
 	}
 }
 
-type ScaledRResult struct {
+type scaledRResult struct {
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	Scaler     float64
@@ -326,8 +326,8 @@ type ScaledRResult struct {
 }
 
 // ScaleR scales an RResult component-wise.
-func ScaleR(r RResult, f float64) *ScaledRResult {
-	return &ScaledRResult{
+func ScaleR(r RResult, f float64) RResult {
+	return &scaledRResult{
 		OutputVec:  r.Output().Copy().Scale(f),
 		ROutputVec: r.ROutput().Copy().Scale(f),
 		Scaler:     f,
@@ -335,19 +335,19 @@ func ScaleR(r RResult, f float64) *ScaledRResult {
 	}
 }
 
-func (s *ScaledRResult) Output() linalg.Vector {
+func (s *scaledRResult) Output() linalg.Vector {
 	return s.OutputVec
 }
 
-func (s *ScaledRResult) ROutput() linalg.Vector {
+func (s *scaledRResult) ROutput() linalg.Vector {
 	return s.ROutputVec
 }
 
-func (s *ScaledRResult) Constant(rg RGradient, g Gradient) bool {
+func (s *scaledRResult) Constant(rg RGradient, g Gradient) bool {
 	return s.Input.Constant(rg, g)
 }
 
-func (s *ScaledRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+func (s *scaledRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	if !s.Input.Constant(rgrad, grad) {
 		s.Input.PropagateRGradient(upstream.Scale(s.Scaler), upstreamR.Scale(s.Scaler),
@@ -355,32 +355,32 @@ func (s *ScaledRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 }
 
-type ScaleFirstResult struct {
+type scaleFirstResult struct {
 	OutputVec linalg.Vector
 	Scaler    Result
 	Input     Result
 }
 
-// ScaleFirstResult scales all the elements of
+// scaleFirstResult scales all the elements of
 // a vector by the first element of a vector.
-func ScaleFirst(in Result, scaler Result) *ScaleFirstResult {
+func ScaleFirst(in Result, scaler Result) Result {
 	f := scaler.Output()[0]
-	return &ScaleFirstResult{
+	return &scaleFirstResult{
 		OutputVec: in.Output().Copy().Scale(f),
 		Scaler:    scaler,
 		Input:     in,
 	}
 }
 
-func (s *ScaleFirstResult) Output() linalg.Vector {
+func (s *scaleFirstResult) Output() linalg.Vector {
 	return s.OutputVec
 }
 
-func (s *ScaleFirstResult) Constant(g Gradient) bool {
+func (s *scaleFirstResult) Constant(g Gradient) bool {
 	return s.Input.Constant(g) && s.Scaler.Constant(g)
 }
 
-func (s *ScaleFirstResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+func (s *scaleFirstResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	if !s.Scaler.Constant(grad) {
 		downstream := make(linalg.Vector, len(s.Scaler.Output()))
 		downstream[0] = upstream.DotFast(s.Input.Output())
@@ -395,7 +395,7 @@ func (s *ScaleFirstResult) PropagateGradient(upstream linalg.Vector, grad Gradie
 	}
 }
 
-type ScaleFirstRResult struct {
+type scaleFirstRResult struct {
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	Scaler     RResult
@@ -403,10 +403,10 @@ type ScaleFirstRResult struct {
 }
 
 // ScaleFirstR is like ScaleFirst, but for RResults.
-func ScaleFirstR(in RResult, scaler RResult) *ScaleFirstRResult {
+func ScaleFirstR(in RResult, scaler RResult) RResult {
 	f := scaler.Output()[0]
 	fR := scaler.ROutput()[0]
-	return &ScaleFirstRResult{
+	return &scaleFirstRResult{
 		OutputVec:  in.Output().Copy().Scale(f),
 		ROutputVec: in.Output().Copy().Scale(fR).Add(in.ROutput().Copy().Scale(f)),
 		Scaler:     scaler,
@@ -414,19 +414,19 @@ func ScaleFirstR(in RResult, scaler RResult) *ScaleFirstRResult {
 	}
 }
 
-func (s *ScaleFirstRResult) Output() linalg.Vector {
+func (s *scaleFirstRResult) Output() linalg.Vector {
 	return s.OutputVec
 }
 
-func (s *ScaleFirstRResult) ROutput() linalg.Vector {
+func (s *scaleFirstRResult) ROutput() linalg.Vector {
 	return s.ROutputVec
 }
 
-func (s *ScaleFirstRResult) Constant(rg RGradient, g Gradient) bool {
+func (s *scaleFirstRResult) Constant(rg RGradient, g Gradient) bool {
 	return s.Input.Constant(rg, g) && s.Scaler.Constant(rg, g)
 }
 
-func (s *ScaleFirstRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+func (s *scaleFirstRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	if !s.Scaler.Constant(rgrad, grad) {
 		downstream := make(linalg.Vector, len(s.Scaler.Output()))
@@ -438,7 +438,7 @@ func (s *ScaleFirstRResult) PropagateRGradient(upstream, upstreamR linalg.Vector
 	}
 
 	// This is intentionally done after propagating s.Scaler.
-	// See ScaleFirstResult.PropagateGradient() for more.
+	// See scaleFirstResult.PropagateGradient() for more.
 	if !s.Input.Constant(rgrad, grad) {
 		scaler := s.Scaler.Output()[0]
 		scalerR := s.Scaler.ROutput()[0]
@@ -448,33 +448,33 @@ func (s *ScaleFirstRResult) PropagateRGradient(upstream, upstreamR linalg.Vector
 	}
 }
 
-type ResultSquare struct {
+type resultSquare struct {
 	OutputVec linalg.Vector
 	Input     Result
 }
 
 // Square squares every component of a Result.
-func Square(r Result) *ResultSquare {
+func Square(r Result) Result {
 	rVec := r.Output()
 	out := make(linalg.Vector, len(rVec))
 	for i, x := range rVec {
 		out[i] = x * x
 	}
-	return &ResultSquare{
+	return &resultSquare{
 		OutputVec: out,
 		Input:     r,
 	}
 }
 
-func (r *ResultSquare) Output() linalg.Vector {
+func (r *resultSquare) Output() linalg.Vector {
 	return r.OutputVec
 }
 
-func (r *ResultSquare) Constant(g Gradient) bool {
+func (r *resultSquare) Constant(g Gradient) bool {
 	return r.Input.Constant(g)
 }
 
-func (r *ResultSquare) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+func (r *resultSquare) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	if !r.Input.Constant(grad) {
 		for i, x := range r.Input.Output() {
 			upstream[i] *= x * 2
@@ -483,14 +483,14 @@ func (r *ResultSquare) PropagateGradient(upstream linalg.Vector, grad Gradient) 
 	}
 }
 
-type RResultSquare struct {
+type rresultSquare struct {
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	Input      RResult
 }
 
 // SquareR squares every component of an RResult.
-func SquareR(r RResult) *RResultSquare {
+func SquareR(r RResult) RResult {
 	vec := r.Output()
 	vecR := r.ROutput()
 	out := make(linalg.Vector, len(vec))
@@ -499,26 +499,26 @@ func SquareR(r RResult) *RResultSquare {
 		out[i] = x * x
 		outR[i] = 2 * x * vecR[i]
 	}
-	return &RResultSquare{
+	return &rresultSquare{
 		OutputVec:  out,
 		ROutputVec: outR,
 		Input:      r,
 	}
 }
 
-func (r *RResultSquare) Output() linalg.Vector {
+func (r *rresultSquare) Output() linalg.Vector {
 	return r.OutputVec
 }
 
-func (r *RResultSquare) ROutput() linalg.Vector {
+func (r *rresultSquare) ROutput() linalg.Vector {
 	return r.ROutputVec
 }
 
-func (r *RResultSquare) Constant(rg RGradient, g Gradient) bool {
+func (r *rresultSquare) Constant(rg RGradient, g Gradient) bool {
 	return r.Input.Constant(rg, g)
 }
 
-func (r *RResultSquare) PropagateRGradient(upstream, upstreamR linalg.Vector,
+func (r *rresultSquare) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	if !r.Input.Constant(rgrad, grad) {
 		inR := r.Input.ROutput()
@@ -530,34 +530,34 @@ func (r *RResultSquare) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 }
 
-type ResultInverse struct {
+type resultInverse struct {
 	OutputVec linalg.Vector
 	Input     Result
 }
 
 // Inverse computes component-wise reciprocals.
 // NaNs or Infs will result from 0-divisions.
-func Inverse(r Result) *ResultInverse {
+func Inverse(r Result) Result {
 	inVec := r.Output()
 	outVec := make(linalg.Vector, len(inVec))
 	for i, x := range inVec {
 		outVec[i] = 1 / x
 	}
-	return &ResultInverse{
+	return &resultInverse{
 		OutputVec: outVec,
 		Input:     r,
 	}
 }
 
-func (r *ResultInverse) Output() linalg.Vector {
+func (r *resultInverse) Output() linalg.Vector {
 	return r.OutputVec
 }
 
-func (r *ResultInverse) Constant(g Gradient) bool {
+func (r *resultInverse) Constant(g Gradient) bool {
 	return r.Input.Constant(g)
 }
 
-func (r *ResultInverse) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+func (r *resultInverse) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	if !r.Input.Constant(grad) {
 		for i, x := range r.OutputVec {
 			upstream[i] *= -x * x
@@ -566,7 +566,7 @@ func (r *ResultInverse) PropagateGradient(upstream linalg.Vector, grad Gradient)
 	}
 }
 
-type RResultInverse struct {
+type rresultInverse struct {
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	SquaredOut linalg.Vector
@@ -574,7 +574,7 @@ type RResultInverse struct {
 }
 
 // InverseR is like Inverse, but for RResults.
-func InverseR(r RResult) *RResultInverse {
+func InverseR(r RResult) RResult {
 	inVec := r.Output()
 	inVecR := r.ROutput()
 	outVec := make(linalg.Vector, len(inVec))
@@ -587,7 +587,7 @@ func InverseR(r RResult) *RResultInverse {
 		squaredOut[i] = squared
 		outVecR[i] = -squared * inVecR[i]
 	}
-	return &RResultInverse{
+	return &rresultInverse{
 		OutputVec:  outVec,
 		ROutputVec: outVecR,
 		SquaredOut: squaredOut,
@@ -595,19 +595,19 @@ func InverseR(r RResult) *RResultInverse {
 	}
 }
 
-func (r *RResultInverse) Output() linalg.Vector {
+func (r *rresultInverse) Output() linalg.Vector {
 	return r.OutputVec
 }
 
-func (r *RResultInverse) ROutput() linalg.Vector {
+func (r *rresultInverse) ROutput() linalg.Vector {
 	return r.ROutputVec
 }
 
-func (r *RResultInverse) Constant(rg RGradient, g Gradient) bool {
+func (r *rresultInverse) Constant(rg RGradient, g Gradient) bool {
 	return r.Input.Constant(rg, g)
 }
 
-func (r *RResultInverse) PropagateRGradient(upstream, upstreamR linalg.Vector,
+func (r *rresultInverse) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	if !r.Input.Constant(rgrad, grad) {
 		inR := r.Input.ROutput()
@@ -623,35 +623,35 @@ func (r *RResultInverse) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 }
 
-type ResultPow struct {
+type resultPow struct {
 	OutputVec linalg.Vector
 	Power     float64
 	Input     Result
 }
 
 // Pow raises each component of r to a given power.
-func Pow(r Result, pow float64) *ResultPow {
+func Pow(r Result, pow float64) Result {
 	input := r.Output()
 	output := make(linalg.Vector, len(input))
 	for i, x := range input {
 		output[i] = math.Pow(x, pow)
 	}
-	return &ResultPow{
+	return &resultPow{
 		OutputVec: output,
 		Power:     pow,
 		Input:     r,
 	}
 }
 
-func (r *ResultPow) Output() linalg.Vector {
+func (r *resultPow) Output() linalg.Vector {
 	return r.OutputVec
 }
 
-func (r *ResultPow) Constant(g Gradient) bool {
+func (r *resultPow) Constant(g Gradient) bool {
 	return r.Power != 0 && r.Input.Constant(g)
 }
 
-func (r *ResultPow) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+func (r *resultPow) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	if !r.Constant(grad) {
 		if r.Power != 1 {
 			for i, x := range r.Input.Output() {
@@ -662,7 +662,7 @@ func (r *ResultPow) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	}
 }
 
-type RResultPow struct {
+type rresultPow struct {
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	Power      float64
@@ -684,7 +684,7 @@ func PowR(r RResult, pow float64) RResult {
 			outputR[i] = pow * math.Pow(x, pow-1) * xR
 		}
 	}
-	return &RResultPow{
+	return &rresultPow{
 		OutputVec:  output,
 		ROutputVec: outputR,
 		Power:      pow,
@@ -692,19 +692,19 @@ func PowR(r RResult, pow float64) RResult {
 	}
 }
 
-func (r *RResultPow) Output() linalg.Vector {
+func (r *rresultPow) Output() linalg.Vector {
 	return r.OutputVec
 }
 
-func (r *RResultPow) ROutput() linalg.Vector {
+func (r *rresultPow) ROutput() linalg.Vector {
 	return r.ROutputVec
 }
 
-func (r *RResultPow) Constant(rg RGradient, g Gradient) bool {
+func (r *rresultPow) Constant(rg RGradient, g Gradient) bool {
 	return r.Power != 0 && r.Input.Constant(rg, g)
 }
 
-func (r *RResultPow) PropagateRGradient(upstream, upstreamR linalg.Vector,
+func (r *rresultPow) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	if !r.Constant(rgrad, grad) {
 		if r.Power != 1 {
@@ -722,7 +722,7 @@ func (r *RResultPow) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 }
 
-type SumAllResult struct {
+type sumAllResult struct {
 	OutputVec linalg.Vector
 	Input     Result
 }
@@ -730,26 +730,26 @@ type SumAllResult struct {
 // SumAll adds up all the components of r and
 // returns a vector with that sum as its one
 // and only element.
-func SumAll(r Result) *SumAllResult {
+func SumAll(r Result) Result {
 	var sum float64
 	for _, x := range r.Output() {
 		sum += x
 	}
-	return &SumAllResult{
+	return &sumAllResult{
 		OutputVec: linalg.Vector{sum},
 		Input:     r,
 	}
 }
 
-func (s *SumAllResult) Output() linalg.Vector {
+func (s *sumAllResult) Output() linalg.Vector {
 	return s.OutputVec
 }
 
-func (s *SumAllResult) Constant(g Gradient) bool {
+func (s *sumAllResult) Constant(g Gradient) bool {
 	return s.Input.Constant(g)
 }
 
-func (s *SumAllResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+func (s *sumAllResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	if !s.Input.Constant(grad) {
 		inLen := len(s.Input.Output())
 		downstream := make(linalg.Vector, inLen)
@@ -760,40 +760,40 @@ func (s *SumAllResult) PropagateGradient(upstream linalg.Vector, grad Gradient) 
 	}
 }
 
-type SumAllRResult struct {
+type sumAllRResult struct {
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	Input      RResult
 }
 
 // SumAllR is like SumAll, but for an RResult.
-func SumAllR(r RResult) *SumAllRResult {
+func SumAllR(r RResult) RResult {
 	var sum, rsum float64
 	routput := r.ROutput()
 	for i, x := range r.Output() {
 		sum += x
 		rsum += routput[i]
 	}
-	return &SumAllRResult{
+	return &sumAllRResult{
 		OutputVec:  linalg.Vector{sum},
 		ROutputVec: linalg.Vector{rsum},
 		Input:      r,
 	}
 }
 
-func (s *SumAllRResult) Output() linalg.Vector {
+func (s *sumAllRResult) Output() linalg.Vector {
 	return s.OutputVec
 }
 
-func (s *SumAllRResult) ROutput() linalg.Vector {
+func (s *sumAllRResult) ROutput() linalg.Vector {
 	return s.ROutputVec
 }
 
-func (s *SumAllRResult) Constant(rg RGradient, g Gradient) bool {
+func (s *sumAllRResult) Constant(rg RGradient, g Gradient) bool {
 	return s.Input.Constant(rg, g)
 }
 
-func (s *SumAllRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+func (s *sumAllRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	if !s.Input.Constant(rgrad, grad) {
 		inLen := len(s.Input.Output())
