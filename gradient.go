@@ -20,6 +20,12 @@ func (g Gradient) Zero() {
 	zeroVariableMap(g)
 }
 
+// Add adds all the values from g1 to g.
+// The gradients should have the exact same keys.
+func (g Gradient) Add(g1 Gradient) {
+	addVariableMaps(g, g1)
+}
+
 // An RGradient is like a Gradient, but its entries
 // correspond to the derivatives of the components
 // of the gradient with respect to a variable r.
@@ -32,6 +38,12 @@ func NewRGradient(vars []*Variable) RGradient {
 // Zero resets all the values of the RGradient to 0.
 func (g RGradient) Zero() {
 	zeroVariableMap(g)
+}
+
+// Add adds all the values from g1 to g.
+// The RGradients should have the exact same keys.
+func (g RGradient) Add(g1 RGradient) {
+	addVariableMaps(g, g1)
 }
 
 // An RVector specifies how much each variable
@@ -50,5 +62,12 @@ func zeroVariableMap(m map[*Variable]linalg.Vector) {
 		for i := range v {
 			v[i] = 0
 		}
+	}
+}
+
+func addVariableMaps(m, m1 map[*Variable]linalg.Vector) {
+	for k, v := range m {
+		v1 := m1[k]
+		v.Add(v1)
 	}
 }
