@@ -34,6 +34,25 @@ func TestExpRGradient(t *testing.T) {
 	funcTest.Run(t)
 }
 
+func TestLogGradient(t *testing.T) {
+	funcTest := &FuncTest{
+		F:     ComposedFunc{Log{}, AddTwice{}},
+		Vars:  mathFuncTestVars,
+		Input: mathFuncTestVec,
+	}
+	funcTest.Run(t)
+}
+
+func TestLogRGradient(t *testing.T) {
+	funcTest := &RFuncTest{
+		F:     ComposedRFunc{Log{}, AddTwice{}},
+		Vars:  mathFuncTestVars,
+		Input: NewRVariable(mathFuncTestVec, mathFuncTestRVec),
+		RV:    mathFuncTestRVec,
+	}
+	funcTest.Run(t)
+}
+
 func TestSigmoidGradient(t *testing.T) {
 	funcTest := &FuncTest{
 		F:     ComposedFunc{Sigmoid{}, Sigmoid{}, Sigmoid{}, AddTwice{}},

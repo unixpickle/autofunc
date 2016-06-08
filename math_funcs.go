@@ -95,6 +95,96 @@ func (e *ExpRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 }
 
+// Log is a Func and RFunc which applies the
+// natural logarithm component-wise.
+type Log struct{}
+
+func (_ Log) Apply(in Result) Result {
+	inVec := in.Output()
+	outVec := make(linalg.Vector, len(inVec))
+	for i, in := range inVec {
+		outVec[i] = math.Log(in)
+	}
+	return &LogResult{
+		OutputVec: outVec,
+		Input:     in,
+	}
+}
+
+func (_ Log) ApplyR(v RVector, in RResult) RResult {
+	inVec := in.Output()
+	inVecR := in.ROutput()
+	outVec := make(linalg.Vector, len(inVec))
+	outVecR := make(linalg.Vector, len(inVec))
+	for i, in := range inVec {
+		outVec[i] = math.Log(in)
+		outVecR[i] = inVecR[i] / in
+	}
+	return &LogRResult{
+		OutputVec:  outVec,
+		ROutputVec: outVecR,
+		Input:      in,
+	}
+}
+
+type LogResult struct {
+	OutputVec linalg.Vector
+	Input     Result
+}
+
+func (l *LogResult) Output() linalg.Vector {
+	return l.OutputVec
+}
+
+func (l *LogResult) Constant(g Gradient) bool {
+	return l.Input.Constant(g)
+}
+
+func (l *LogResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+	if l.Input.Constant(grad) {
+		return
+	}
+	inVec := l.Input.Output()
+	for i := range upstream {
+		upstream[i] *= 1 / inVec[i]
+	}
+	l.Input.PropagateGradient(upstream, grad)
+}
+
+type LogRResult struct {
+	OutputVec  linalg.Vector
+	ROutputVec linalg.Vector
+	Input      RResult
+}
+
+func (l *LogRResult) Output() linalg.Vector {
+	return l.OutputVec
+}
+
+func (l *LogRResult) ROutput() linalg.Vector {
+	return l.ROutputVec
+}
+
+func (l *LogRResult) Constant(rg RGradient, g Gradient) bool {
+	return l.Input.Constant(rg, g)
+}
+
+func (l *LogRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+	rgrad RGradient, grad Gradient) {
+	if l.Input.Constant(rgrad, grad) {
+		return
+	}
+	inVec := l.Input.Output()
+	inVecR := l.Input.ROutput()
+	for i, u := range upstream {
+		uR := upstreamR[i]
+		input := inVec[i]
+		upstream[i] = u / input
+		upstreamR[i] = uR/input - u*inVecR[i]/(input*input)
+	}
+	l.Input.PropagateRGradient(upstream, upstreamR, rgrad, grad)
+}
+
 // Sigmoid is a Func and RFunc which applies
 // the logistic sigmoid function 1/(1+exp(-x))
 // to every component in its input vector.
