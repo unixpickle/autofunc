@@ -30,11 +30,11 @@ func (m *MLPBenchmark) Run(b *testing.B, backProp bool) {
 	netFunc, vars := m.makeFunc()
 	input := m.makeInput()
 	outGrad, _ := m.outputGrads()
+	grad := autofunc.NewGradient(vars)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		res := netFunc.Apply(input)
 		if backProp {
-			grad := autofunc.NewGradient(vars)
 			res.PropagateGradient(outGrad, grad)
 		}
 	}
@@ -45,12 +45,12 @@ func (m *MLPBenchmark) RunR(b *testing.B, backProp bool) {
 	input := m.makeInput()
 	rVec := m.makeRVector(vars)
 	outGrad, outRGrad := m.outputGrads()
+	rgrad := autofunc.NewRGradient(vars)
+	grad := autofunc.NewGradient(vars)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		res := netFunc.ApplyR(rVec, autofunc.NewRVariable(input, rVec))
 		if backProp {
-			rgrad := autofunc.NewRGradient(vars)
-			grad := autofunc.NewGradient(vars)
 			res.PropagateRGradient(outGrad, outRGrad, rgrad, grad)
 		}
 	}
