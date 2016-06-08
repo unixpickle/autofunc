@@ -55,18 +55,6 @@
 // If a Result x is used multiple times to compute a
 // Result y, backpropagation on y will run through x
 // multiple times.
-//
-// To avoid exponential backpropagation work for things
-// like Recurrent Neural Networks, you can "pool" the
-// gradient with respect to a Result before backpropagating
-// through said Result.
-// To do this, put the Result you wish to pool into a
-// *Variable, then use that variable for all the
-// computations that depend on said Result.
-// During backpropagation, you would first backpropagate
-// with respect to the *Variable, thus accumulating the
-// total output gradient with respect to said *Variable.
-// Next, you would backpropagate through the Result itself,
-// passing the *Variable's gradient as the upstream
-// argument of PropagateGradient().
+// This can, in part, be alleviated using the Pool()
+// and PoolR() functions.
 package autofunc
