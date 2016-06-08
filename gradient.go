@@ -26,6 +26,11 @@ func (g Gradient) Add(g1 Gradient) {
 	addVariableMaps(g, g1)
 }
 
+// Scale scales all the partials in g by f.
+func (g Gradient) Scale(f float64) {
+	scaleVariableMap(g, f)
+}
+
 // An RGradient is like a Gradient, but its entries
 // correspond to the derivatives of the components
 // of the gradient with respect to a variable r.
@@ -44,6 +49,11 @@ func (g RGradient) Zero() {
 // The RGradients should have the exact same keys.
 func (g RGradient) Add(g1 RGradient) {
 	addVariableMaps(g, g1)
+}
+
+// Scale scales all the partials in g by f.
+func (g RGradient) Scale(f float64) {
+	scaleVariableMap(g, f)
 }
 
 // An RVector specifies how much each variable
@@ -69,5 +79,11 @@ func addVariableMaps(m, m1 map[*Variable]linalg.Vector) {
 	for k, v := range m {
 		v1 := m1[k]
 		v.Add(v1)
+	}
+}
+
+func scaleVariableMap(m map[*Variable]linalg.Vector, f float64) {
+	for _, v := range m {
+		v.Scale(f)
 	}
 }
