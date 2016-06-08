@@ -117,9 +117,10 @@ func (l *LSTMBenchmark) generateLayer(outSize int) (*autofunc.LinTran, *autofunc
 	biasVar := &autofunc.Variable{Vector: biasMat}
 
 	linTran := &autofunc.LinTran{
-		Data: weightVar,
-		Rows: outSize,
-		Cols: l.InputSize + l.HiddenSize,
+		Data:  weightVar,
+		Rows:  outSize,
+		Cols:  l.InputSize + l.HiddenSize,
+		Cache: autofunc.NewVectorCache(0),
 	}
 	linAdd := &autofunc.LinAdd{Var: biasVar}
 

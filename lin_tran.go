@@ -16,6 +16,12 @@ type LinTran struct {
 	Data *Variable
 	Rows int
 	Cols int
+
+	// Cache is an optional cache to use for
+	// scratch space when back propagating.
+	// Supplying a SliceCache can greatly improve
+	// performance.
+	Cache *VectorCache
 }
 
 // Apply performs matrix multiplication (i.e. m*in).
@@ -98,8 +104,8 @@ func (l *LinTran) dataGradient(upstream linalg.Vector, grad Gradient, input lina
 }
 
 func (l *LinTran) inputGradient(upstream linalg.Vector) linalg.Vector {
+	gradVal := l.Cache.Alloc(l.Cols)
 	matData := l.Data.Output()
-	gradVal := make(linalg.Vector, l.Cols)
 
 	matrix := blas64.General{
 		Rows:   l.Rows,
@@ -138,6 +144,7 @@ func (l *linTranResult) PropagateGradient(upstream linalg.Vector, grad Gradient)
 	if !l.Input.Constant(grad) {
 		gradVal := l.Matrix.inputGradient(upstream)
 		l.Input.PropagateGradient(gradVal, grad)
+		l.Matrix.Cache.Free(gradVal)
 	}
 }
 
@@ -190,7 +197,7 @@ func (l *linTranRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 		data := l.RData.Output()
 		dataIdx := 0
 
-		downstreamRVec := make(linalg.Vector, l.Matrix.Cols)
+		downstreamRVec := l.Matrix.Cache.Alloc(l.Matrix.Cols)
 		for row, partial := range upstream {
 			partialR := upstreamR[row]
 			for col := 0; col < l.Matrix.Cols; col++ {
@@ -198,8 +205,11 @@ func (l *linTranRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 				dataIdx++
 			}
 		}
+		downstreamVec := l.Matrix.inputGradient(upstream)
 
-		l.Input.PropagateRGradient(l.Matrix.inputGradient(upstream),
-			downstreamRVec, rgrad, grad)
+		l.Input.PropagateRGradient(downstreamVec, downstreamRVec, rgrad, grad)
+
+		l.Matrix.Cache.Free(downstreamVec)
+		l.Matrix.Cache.Free(downstreamRVec)
 	}
 }

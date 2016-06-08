@@ -74,9 +74,10 @@ func (m *MLPBenchmark) makeFunc() (autofunc.RFunc, []*autofunc.Variable) {
 		matVar := &autofunc.Variable{Vector: mat}
 		biasVar := &autofunc.Variable{Vector: biasVec}
 		weightLayer := &autofunc.LinTran{
-			Data: matVar,
-			Rows: outSize,
-			Cols: inSize,
+			Data:  matVar,
+			Rows:  outSize,
+			Cols:  inSize,
+			Cache: autofunc.NewVectorCache(0),
 		}
 		biasLayer := &autofunc.LinAdd{
 			Var: biasVar,
