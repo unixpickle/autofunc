@@ -25,6 +25,23 @@ type Result interface {
 	// after this returns, so Results should not retain
 	// references to their upstream argument.
 	PropagateGradient(upstream linalg.Vector, grad Gradient)
+
+	// Release releases any data used by this Result back
+	// to the cache from which it was obtained.
+	// It also propagates the release signal back to
+	// Results on which this Result depends.
+	//
+	// Release may be called multiple times.
+	// Every call after the first should do nothing.
+	//
+	// You should not use a Result after releasing it unless
+	// the Result is a *Variable.
+	// Since a Result releases its dependencies, you should
+	// take care not to use a Result that has been Released
+	// indirectly through some other result.
+	//
+	// Release is not concurrency-safe (i.e. thread-safe).
+	Release()
 }
 
 // RResult is like a Result, but each value in an
@@ -66,4 +83,7 @@ type RResult interface {
 	// upstreamR after this returns, so RResults should not
 	// retain references to their upstream arguments.
 	PropagateRGradient(upstream, upstreamR linalg.Vector, rgrad RGradient, grad Gradient)
+
+	// Release is like Result.Release().
+	Release()
 }

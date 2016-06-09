@@ -234,6 +234,12 @@ func (l *lstmNet) PropagateGradient(upstreams []linalg.Vector, grad autofunc.Gra
 }
 
 func (l *lstmNet) Reset() {
+	for _, l := range l.outputStates {
+		l.Release()
+	}
+	for _, l := range l.outputs {
+		l.Release()
+	}
 	l.inputStates = nil
 	l.outputStates = nil
 	l.outputStateVars = nil

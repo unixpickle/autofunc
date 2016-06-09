@@ -24,25 +24,39 @@ func (v *Variable) Constant(g Gradient) bool {
 	return !variable
 }
 
+// Release does absolutely nothing.
+func (v *Variable) Release() {
+}
+
 // An RVariable is a variable that knows about
 // a particular RVector and can thus behave
 // like an RResult.
 type RVariable struct {
-	Variable   *Variable
+	Variable *Variable
+
 	ROutputVec linalg.Vector
+
+	VecWasAllocated bool
+	VecCache        *VectorCache
 }
 
 func NewRVariable(v *Variable, rv RVector) *RVariable {
+	return NewRVariableCache(v, rv, nil)
+}
+
+func NewRVariableCache(v *Variable, rv RVector, c *VectorCache) *RVariable {
 	if vec, ok := rv[v]; ok {
 		return &RVariable{
 			Variable:   v,
 			ROutputVec: vec,
 		}
 	} else {
-		outputDeriv := make(linalg.Vector, len(v.Vector))
+		outputDeriv := c.Alloc(len(v.Vector))
 		return &RVariable{
-			Variable:   v,
-			ROutputVec: outputDeriv,
+			Variable:        v,
+			ROutputVec:      outputDeriv,
+			VecWasAllocated: true,
+			VecCache:        c,
 		}
 	}
 }
@@ -75,5 +89,14 @@ func (r *RVariable) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 	if gradVec, ok := rgrad[r.Variable]; ok {
 		gradVec.Add(upstreamR)
+	}
+}
+
+// Release releases the ROutput if it was allocated to
+// be all zeroes.
+func (r *RVariable) Release() {
+	if r.VecWasAllocated {
+		r.VecCache.Free(r.ROutputVec)
+		r.ROutputVec = nil
 	}
 }

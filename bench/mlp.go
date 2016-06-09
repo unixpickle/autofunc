@@ -37,6 +37,7 @@ func (m *MLPBenchmark) Run(b *testing.B, backProp bool) {
 		if backProp {
 			res.PropagateGradient(outGrad, grad)
 		}
+		res.Release()
 	}
 }
 
@@ -53,6 +54,7 @@ func (m *MLPBenchmark) RunR(b *testing.B, backProp bool) {
 		if backProp {
 			res.PropagateRGradient(outGrad, outRGrad, rgrad, grad)
 		}
+		res.Release()
 	}
 }
 

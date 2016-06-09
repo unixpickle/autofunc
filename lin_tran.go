@@ -16,6 +16,8 @@ type LinTran struct {
 	Data *Variable
 	Rows int
 	Cols int
+
+	Cache *VectorCache
 }
 
 // Apply performs matrix multiplication (i.e. m*in).
@@ -29,7 +31,7 @@ func (l *LinTran) Apply(in Result) Result {
 
 // ApplyR is like Apply but for RResults.
 func (l *LinTran) ApplyR(v RVector, in RResult) RResult {
-	rData := NewRVariable(l.Data, v)
+	rData := NewRVariableCache(l.Data, v, l.Cache)
 	return &linTranRResult{
 		Matrix:     l,
 		OutputVec:  l.multiply(in.Output()),
@@ -40,7 +42,7 @@ func (l *LinTran) ApplyR(v RVector, in RResult) RResult {
 }
 
 func (l *LinTran) multiply(vec linalg.Vector) linalg.Vector {
-	res := make(linalg.Vector, l.Rows)
+	res := l.Cache.Alloc(l.Rows)
 
 	mat := blas64.General{
 		Rows:   l.Rows,
@@ -62,7 +64,7 @@ func (l *LinTran) multiply(vec linalg.Vector) linalg.Vector {
 }
 
 func (l *LinTran) multiplyR(rData *RVariable, rVec RResult) linalg.Vector {
-	res := make(linalg.Vector, l.Rows)
+	res := l.Cache.Alloc(l.Rows)
 	matData := rData.Output()
 	matDerivs := rData.ROutput()
 	inVec := rVec.Output()
@@ -99,7 +101,7 @@ func (l *LinTran) dataGradient(upstream linalg.Vector, grad Gradient, input lina
 
 func (l *LinTran) inputGradient(upstream linalg.Vector) linalg.Vector {
 	matData := l.Data.Output()
-	gradVal := make(linalg.Vector, l.Cols)
+	gradVal := l.Cache.Alloc(l.Cols)
 
 	matrix := blas64.General{
 		Rows:   l.Rows,
@@ -138,11 +140,18 @@ func (l *linTranResult) PropagateGradient(upstream linalg.Vector, grad Gradient)
 	if !l.Input.Constant(grad) {
 		gradVal := l.Matrix.inputGradient(upstream)
 		l.Input.PropagateGradient(gradVal, grad)
+		l.Matrix.Cache.Free(gradVal)
 	}
 }
 
 func (l *linTranResult) Constant(g Gradient) bool {
 	return l.Matrix.Data.Constant(g) && l.Input.Constant(g)
+}
+
+func (l *linTranResult) Release() {
+	l.Matrix.Cache.Free(l.OutputVec)
+	l.OutputVec = nil
+	l.Input.Release()
 }
 
 type linTranRResult struct {
@@ -190,7 +199,7 @@ func (l *linTranRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 		data := l.RData.Output()
 		dataIdx := 0
 
-		downstreamRVec := make(linalg.Vector, l.Matrix.Cols)
+		downstreamRVec := l.Matrix.Cache.Alloc(l.Matrix.Cols)
 		for row, partial := range upstream {
 			partialR := upstreamR[row]
 			for col := 0; col < l.Matrix.Cols; col++ {
@@ -198,8 +207,20 @@ func (l *linTranRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 				dataIdx++
 			}
 		}
+		downstreamVec := l.Matrix.inputGradient(upstream)
 
-		l.Input.PropagateRGradient(l.Matrix.inputGradient(upstream),
-			downstreamRVec, rgrad, grad)
+		l.Input.PropagateRGradient(downstreamVec, downstreamRVec, rgrad, grad)
+
+		l.Matrix.Cache.Free(downstreamRVec)
+		l.Matrix.Cache.Free(downstreamVec)
 	}
+}
+
+func (l *linTranRResult) Release() {
+	l.Matrix.Cache.Free(l.OutputVec)
+	l.Matrix.Cache.Free(l.ROutputVec)
+	l.OutputVec = nil
+	l.ROutputVec = nil
+	l.Input.Release()
+	l.RData.Release()
 }

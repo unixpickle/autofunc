@@ -3,6 +3,7 @@ package autofunc
 import "github.com/unixpickle/num-analysis/linalg"
 
 type joinedResults struct {
+	Cache     *VectorCache
 	OutputVec linalg.Vector
 	Results   []Result
 }
@@ -11,6 +12,12 @@ type joinedResults struct {
 // The results are concatenated first to last,
 // so Concat({1,2,3}, {4,5,6}) = {1,2,3,4,5,6}.
 func Concat(rs ...Result) Result {
+	return ConcatCache(nil, rs...)
+}
+
+// ConcatCache is like Concat, but it lets you
+// specify which VectorCache to use.
+func ConcatCache(c *VectorCache, rs ...Result) Result {
 	outputs := make([]linalg.Vector, len(rs))
 	var totalLen int
 	for i, x := range rs {
@@ -18,7 +25,7 @@ func Concat(rs ...Result) Result {
 		totalLen += len(outputs[i])
 	}
 
-	outVec := make(linalg.Vector, totalLen)
+	outVec := c.Alloc(totalLen)
 	vecIdx := 0
 	for _, x := range outputs {
 		copy(outVec[vecIdx:], x)
@@ -26,6 +33,7 @@ func Concat(rs ...Result) Result {
 	}
 
 	return &joinedResults{
+		Cache:     c,
 		OutputVec: outVec,
 		Results:   rs,
 	}
@@ -55,7 +63,16 @@ func (j *joinedResults) PropagateGradient(upstream linalg.Vector, grad Gradient)
 	}
 }
 
+func (j *joinedResults) Release() {
+	j.Cache.Free(j.OutputVec)
+	j.OutputVec = nil
+	for _, r := range j.Results {
+		r.Release()
+	}
+}
+
 type joinedRResults struct {
+	Cache      *VectorCache
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	Results    []RResult
@@ -63,6 +80,12 @@ type joinedRResults struct {
 
 // ConcatR is like Concat, but for RResults.
 func ConcatR(rs ...RResult) RResult {
+	return ConcatCacheR(nil, rs...)
+}
+
+// ConcatCacheR is like ConcatR, but it lets you
+// specify which VectorCache to use.
+func ConcatCacheR(c *VectorCache, rs ...RResult) RResult {
 	outputs := make([]linalg.Vector, len(rs))
 	routputs := make([]linalg.Vector, len(rs))
 	var totalLen int
@@ -72,8 +95,8 @@ func ConcatR(rs ...RResult) RResult {
 		totalLen += len(outputs[i])
 	}
 
-	outVec := make(linalg.Vector, totalLen)
-	outVecR := make(linalg.Vector, totalLen)
+	outVec := c.Alloc(totalLen)
+	outVecR := c.Alloc(totalLen)
 	vecIdx := 0
 	for i, x := range outputs {
 		copy(outVec[vecIdx:], x)
@@ -82,6 +105,7 @@ func ConcatR(rs ...RResult) RResult {
 	}
 
 	return &joinedRResults{
+		Cache:      c,
 		OutputVec:  outVec,
 		ROutputVec: outVecR,
 		Results:    rs,
@@ -115,5 +139,15 @@ func (j *joinedRResults) PropagateRGradient(upstream, upstreamR linalg.Vector,
 				rgrad, grad)
 			vecIdx += l
 		}
+	}
+}
+
+func (j *joinedRResults) Release() {
+	j.Cache.Free(j.OutputVec)
+	j.Cache.Free(j.ROutputVec)
+	j.OutputVec = nil
+	j.ROutputVec = nil
+	for _, r := range j.Results {
+		r.Release()
 	}
 }
