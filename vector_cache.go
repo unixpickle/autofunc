@@ -56,7 +56,8 @@ func (v *VectorCache) Alloc(size int) linalg.Vector {
 
 // Free gives a vector back to the cache for reuse.
 //
-// If v or vec are nil, this does nothing.
+// If v is nil, DefaultVectorCache is used.
+// If vec is nil, this does nothing.
 func (v *VectorCache) Free(vec linalg.Vector) {
 	if vec == nil {
 		return
@@ -88,4 +89,27 @@ func (v *VectorCache) Clear() {
 	v.floatCount = 0
 	v.sizeCaches = map[int][]linalg.Vector{}
 	v.lock.Unlock()
+}
+
+// MaxFloats returns the maximum number of floats
+// allowed in this cache.
+func (v *VectorCache) MaxFloats() int {
+	v.lock.Lock()
+	defer v.lock.Unlock()
+	return v.maxFloats
+}
+
+// SetMaxFloats changes the maximum number of floats
+// allowed in this cache.
+// If the threshold is lower than the current number
+// of floats, vectors will be evicted.
+func (v *VectorCache) SetMaxFloats(m int) {
+	v.lock.Lock()
+	defer v.lock.Unlock()
+
+	v.maxFloats = m
+	if v.floatCount > m {
+		v.sizeCaches = map[int][]linalg.Vector{}
+		v.floatCount = 0
+	}
 }
