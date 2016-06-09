@@ -295,11 +295,10 @@ func (s *sigmoidResult) Constant(g Gradient) bool {
 
 func (s *sigmoidResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	if !s.Input.Constant(grad) {
-		inGrad := make(linalg.Vector, len(s.OutputVec))
 		for i, x := range s.OutputVec {
-			inGrad[i] = x * (1 - x) * upstream[i]
+			upstream[i] *= x * (1 - x)
 		}
-		s.Input.PropagateGradient(inGrad, grad)
+		s.Input.PropagateGradient(upstream, grad)
 	}
 }
 
@@ -334,19 +333,17 @@ func (s *sigmoidRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 		return
 	}
 
-	inGrad := make(linalg.Vector, len(s.OutputVec))
-	inGradR := make(linalg.Vector, len(s.OutputVec))
 	outR := s.ROutputVec
 
 	for i, x := range s.OutputVec {
 		partial := upstream[i]
 		partialR := upstreamR[i]
 		xR := outR[i]
-		inGrad[i] = x * (1 - x) * partial
-		inGradR[i] = xR*(1-x)*partial - x*xR*partial + x*(1-x)*partialR
+		upstream[i] = x * (1 - x) * partial
+		upstreamR[i] = xR*(1-x)*partial - x*xR*partial + x*(1-x)*partialR
 	}
 
-	s.Input.PropagateRGradient(inGrad, inGradR, rgrad, grad)
+	s.Input.PropagateRGradient(upstream, upstreamR, rgrad, grad)
 }
 
 func (s *sigmoidRResult) Release() {
