@@ -3,6 +3,10 @@ package autofunc
 import "github.com/unixpickle/num-analysis/linalg"
 
 // Result represents the output of an operation.
+//
+// A Result is only valid so long as the Results,
+// Variables, and functions it relies on are not
+// modified in any way.
 type Result interface {
 	// Output is the output from the operation.
 	Output() linalg.Vector
@@ -47,6 +51,10 @@ type Result interface {
 // RResult is like a Result, but each value in an
 // RResult is associated with a derivative with
 // respect to some variable r.
+//
+// An RResult is only valid so long as the Results,
+// Variables, and functions it relies on are not
+// modified in any way.
 type RResult interface {
 	// Output is the output from the function.
 	Output() linalg.Vector

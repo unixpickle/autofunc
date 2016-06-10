@@ -43,9 +43,9 @@ func (f *FuncTest) Variables() []*Variable {
 func (f *FuncTest) ApproxPartials(param *float64) linalg.Vector {
 	old := *param
 	*param = old + funcTestDelta
-	val1 := f.F.Apply(f.Input).Output()
+	val1 := f.F.Apply(f.Input).Output().Copy()
 	*param = old - funcTestDelta
-	val2 := f.F.Apply(f.Input).Output()
+	val2 := f.F.Apply(f.Input).Output().Copy()
 	*param = old
 	return val1.Add(val2.Scale(-1)).Scale(1.0 / (2 * funcTestDelta))
 }
@@ -98,9 +98,9 @@ func (f *RFuncTest) ApproxPartials(param *float64) linalg.Vector {
 	inputRV := NewRVariableCache(f.Input, f.RV, f.Cache)
 	old := *param
 	*param = old + funcTestDelta
-	val1 := f.F.ApplyR(f.RV, inputRV).Output()
+	val1 := f.F.ApplyR(f.RV, inputRV).Output().Copy()
 	*param = old - funcTestDelta
-	val2 := f.F.ApplyR(f.RV, inputRV).Output()
+	val2 := f.F.ApplyR(f.RV, inputRV).Output().Copy()
 	*param = old
 	return val1.Add(val2.Scale(-1)).Scale(1.0 / (2 * funcTestDelta))
 }
@@ -190,6 +190,8 @@ func (f *RFuncTest) approximateR() ([]RGradient, linalg.Vector) {
 		grads1 = append(grads1, grad)
 	}
 
+	res1Out := res1.Output().Copy()
+
 	for v, add := range f.RV {
 		v.Vector.Add(add.Copy().Scale(-2 * funcTestDelta))
 	}
@@ -206,6 +208,8 @@ func (f *RFuncTest) approximateR() ([]RGradient, linalg.Vector) {
 		grads2 = append(grads2, grad)
 	}
 
+	res2Out := res2.Output().Copy()
+
 	for v, add := range f.RV {
 		v.Vector.Add(add.Copy().Scale(funcTestDelta))
 	}
@@ -220,7 +224,7 @@ func (f *RFuncTest) approximateR() ([]RGradient, linalg.Vector) {
 		resGrads[i] = RGradient(grad1)
 	}
 
-	outGrads := res1.Output().Add(res2.Output().Scale(-1)).Scale(0.5 / funcTestDelta)
+	outGrads := res1Out.Add(res2Out.Scale(-1)).Scale(0.5 / funcTestDelta)
 
 	return resGrads, outGrads
 }
