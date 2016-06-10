@@ -151,3 +151,101 @@ func (j *joinedRResults) Release() {
 		r.Release()
 	}
 }
+
+type slicedResult struct {
+	Cache    *VectorCache
+	Input    Result
+	StartIdx int
+	EndIdx   int
+}
+
+// Slice generates a Result which contains the
+// sub-range of input.Output() between the start
+// index (inclusive) and end index (exclusive).
+func Slice(input Result, start, end int) Result {
+	return SliceCache(nil, input, start, end)
+}
+
+// SliceCache is like Slice, but it lets you specify
+// which VectorCache to use.
+func SliceCache(c *VectorCache, in Result, start, end int) Result {
+	return &slicedResult{
+		Cache:    c,
+		Input:    in,
+		StartIdx: start,
+		EndIdx:   end,
+	}
+}
+
+func (s *slicedResult) Output() linalg.Vector {
+	return s.Input.Output()[s.StartIdx:s.EndIdx]
+}
+
+func (s *slicedResult) Constant(g Gradient) bool {
+	return s.Input.Constant(g)
+}
+
+func (s *slicedResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+	if !s.Input.Constant(grad) {
+		downstream := s.Cache.Alloc(len(s.Input.Output()))
+		copy(downstream[s.StartIdx:], upstream)
+		s.Input.PropagateGradient(downstream, grad)
+		s.Cache.Free(downstream)
+	}
+}
+
+func (s *slicedResult) Release() {
+	s.Input.Release()
+}
+
+type slicedRResult struct {
+	Cache    *VectorCache
+	Input    RResult
+	StartIdx int
+	EndIdx   int
+}
+
+// SliceR is like Slice, but for RResults.
+func SliceR(input RResult, start, end int) RResult {
+	return SliceCacheR(nil, input, start, end)
+}
+
+// SliceCacheR is like SliceR, but it lets you
+// specify which VectorCache to use.
+func SliceCacheR(c *VectorCache, in RResult, start, end int) RResult {
+	return &slicedRResult{
+		Cache:    c,
+		Input:    in,
+		StartIdx: start,
+		EndIdx:   end,
+	}
+}
+
+func (s *slicedRResult) Output() linalg.Vector {
+	return s.Input.Output()[s.StartIdx:s.EndIdx]
+}
+
+func (s *slicedRResult) ROutput() linalg.Vector {
+	return s.Input.ROutput()[s.StartIdx:s.EndIdx]
+}
+
+func (s *slicedRResult) Constant(rg RGradient, g Gradient) bool {
+	return s.Input.Constant(rg, g)
+}
+
+func (s *slicedRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+	rgrad RGradient, grad Gradient) {
+	if !s.Input.Constant(rgrad, grad) {
+		downstream := s.Cache.Alloc(len(s.Input.Output()))
+		downstreamR := s.Cache.Alloc(len(s.Input.Output()))
+		copy(downstream[s.StartIdx:], upstream)
+		copy(downstreamR[s.StartIdx:], upstreamR)
+		s.Input.PropagateRGradient(downstream, downstreamR, rgrad, grad)
+		s.Cache.Free(downstream)
+		s.Cache.Free(downstreamR)
+	}
+}
+
+func (s *slicedRResult) Release() {
+	s.Input.Release()
+}

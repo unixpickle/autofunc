@@ -33,32 +33,61 @@ var (
 	}
 )
 
-type slicesTestFunc struct{}
+type concatTestFunc struct{}
 
-func (_ slicesTestFunc) Apply(r Result) Result {
+func (_ concatTestFunc) Apply(r Result) Result {
 	return Concat(slicesTestVec1, r, slicesTestVec3)
 }
 
-func (_ slicesTestFunc) ApplyR(v RVector, r RResult) RResult {
+func (_ concatTestFunc) ApplyR(v RVector, r RResult) RResult {
 	v1 := NewRVariable(slicesTestVec1, slicesTestRVec)
 	v3 := NewRVariable(slicesTestVec3, slicesTestRVec)
 	return ConcatR(v1, r, v3)
 }
 
-func TestSlicesGradients(t *testing.T) {
+func TestConcatGradients(t *testing.T) {
 	f := &FuncTest{
-		F:     slicesTestFunc{},
+		F:     concatTestFunc{},
 		Vars:  slicesTestVars,
 		Input: slicesTestVec2,
 	}
 	f.Run(t)
 }
 
-func TestSlicesRGradients(t *testing.T) {
+func TestConcatRGradients(t *testing.T) {
 	f := &RFuncTest{
-		F:     slicesTestFunc{},
+		F:     concatTestFunc{},
 		Vars:  slicesTestVars,
 		Input: slicesTestVec2,
+		RV:    slicesTestRVec,
+	}
+	f.Run(t)
+}
+
+type sliceTestFunc struct{}
+
+func (_ sliceTestFunc) Apply(r Result) Result {
+	return Slice(r, 1, 3)
+}
+
+func (_ sliceTestFunc) ApplyR(v RVector, r RResult) RResult {
+	return SliceR(r, 1, 3)
+}
+
+func TestSliceGradients(t *testing.T) {
+	f := &FuncTest{
+		F:     sliceTestFunc{},
+		Vars:  slicesTestVars,
+		Input: slicesTestVec1,
+	}
+	f.Run(t)
+}
+
+func TestSliceRGradients(t *testing.T) {
+	f := &RFuncTest{
+		F:     sliceTestFunc{},
+		Vars:  slicesTestVars,
+		Input: slicesTestVec1,
 		RV:    slicesTestRVec,
 	}
 	f.Run(t)
