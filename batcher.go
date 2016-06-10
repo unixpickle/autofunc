@@ -44,14 +44,15 @@ func (f *FuncBatcher) Batch(in Result, n int) Result {
 	}
 	sampleLen := inLen / n
 
-	results := make([]Result, n)
-	for i := range results {
-		startIdx := i * sampleLen
-		slicedIn := SliceCache(f.Cache, in, startIdx, startIdx+sampleLen)
-		results[i] = f.F.Apply(slicedIn)
-	}
-
-	return ConcatCache(f.Cache, results...)
+	return Pool(in, func(in Result) Result {
+		results := make([]Result, n)
+		for i := range results {
+			startIdx := i * sampleLen
+			slicedIn := SliceCache(f.Cache, in, startIdx, startIdx+sampleLen)
+			results[i] = f.F.Apply(slicedIn)
+		}
+		return ConcatCache(f.Cache, results...)
+	})
 }
 
 // An RFuncBatcher is like a FuncBatcher, but for RFuncs.
@@ -73,14 +74,15 @@ func (f *RFuncBatcher) BatchR(v RVector, in RResult, n int) RResult {
 	}
 	sampleLen := inLen / n
 
-	results := make([]RResult, n)
-	for i := range results {
-		startIdx := i * sampleLen
-		slicedIn := SliceCacheR(f.Cache, in, startIdx, startIdx+sampleLen)
-		results[i] = f.F.ApplyR(v, slicedIn)
-	}
-
-	return ConcatCacheR(f.Cache, results...)
+	return PoolR(in, func(in RResult) RResult {
+		results := make([]RResult, n)
+		for i := range results {
+			startIdx := i * sampleLen
+			slicedIn := SliceCacheR(f.Cache, in, startIdx, startIdx+sampleLen)
+			results[i] = f.F.ApplyR(v, slicedIn)
+		}
+		return ConcatCacheR(f.Cache, results...)
+	})
 }
 
 // A ComposedBatcher is a Batcher which propagates
