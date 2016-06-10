@@ -1,4 +1,4 @@
-package autofunc
+package functest
 
 import (
 	"math"
