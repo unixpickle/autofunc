@@ -77,14 +77,24 @@ func (v *VectorCache) Free(vec linalg.Vector) {
 
 // FloatCount returns the current number of float64s
 // allocated in this cache.
+//
+// If v is nil, DefaultVectorCache is used.
 func (v *VectorCache) FloatCount() int {
+	if v == nil {
+		v = DefaultVectorCache
+	}
 	v.lock.Lock()
 	defer v.lock.Unlock()
 	return v.floatCount
 }
 
 // Clear clears the entire cache.
+//
+// If v is nil, DefaultVectorCache is used.
 func (v *VectorCache) Clear() {
+	if v == nil {
+		v = DefaultVectorCache
+	}
 	v.lock.Lock()
 	v.floatCount = 0
 	v.sizeCaches = map[int][]linalg.Vector{}
@@ -93,7 +103,12 @@ func (v *VectorCache) Clear() {
 
 // MaxFloats returns the maximum number of floats
 // allowed in this cache.
+//
+// If v is nil, DefaultVectorCache is used.
 func (v *VectorCache) MaxFloats() int {
+	if v == nil {
+		v = DefaultVectorCache
+	}
 	v.lock.Lock()
 	defer v.lock.Unlock()
 	return v.maxFloats
@@ -103,7 +118,12 @@ func (v *VectorCache) MaxFloats() int {
 // allowed in this cache.
 // If the threshold is lower than the current number
 // of floats, vectors will be evicted.
+//
+// If v is nil, DefaultVectorCache is used.
 func (v *VectorCache) SetMaxFloats(m int) {
+	if v == nil {
+		v = DefaultVectorCache
+	}
 	v.lock.Lock()
 	defer v.lock.Unlock()
 
@@ -112,4 +132,26 @@ func (v *VectorCache) SetMaxFloats(m int) {
 		v.sizeCaches = map[int][]linalg.Vector{}
 		v.floatCount = 0
 	}
+}
+
+// UsageHistogram returns a mapping from vector sizes
+// to the number of floats worth of memory reserved
+// for that vector size.
+//
+// If v is nil, DefaultVectorCache is used.
+func (v *VectorCache) UsageHistogram() map[int]int {
+	if v == nil {
+		v = DefaultVectorCache
+	}
+	v.lock.Lock()
+	defer v.lock.Unlock()
+
+	m := map[int]int{}
+	for key, val := range v.sizeCaches {
+		for _, slice := range val {
+			m[key] += len(slice)
+		}
+	}
+
+	return m
 }

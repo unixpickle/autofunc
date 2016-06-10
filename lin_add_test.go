@@ -31,7 +31,7 @@ func TestLinAddRGradient(t *testing.T) {
 	f := &RFuncTest{
 		F:     addFunc,
 		Vars:  linAddTestVars,
-		Input: NewRVariable(linAddTestVec2, linAddTestRVec),
+		Input: linAddTestVec2,
 		RV:    linAddTestRVec,
 	}
 	f.Run(t)

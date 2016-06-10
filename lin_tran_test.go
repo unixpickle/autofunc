@@ -7,11 +7,6 @@ import (
 	"github.com/unixpickle/num-analysis/linalg"
 )
 
-const (
-	linTranTestDelta = 1e-5
-	linTranTestPrec  = 1e-5
-)
-
 var linTranTestMat1 = &LinTran{
 	Data: &Variable{
 		Vector: linalg.Vector([]float64{
@@ -54,7 +49,7 @@ func TestLinTranOutput(t *testing.T) {
 	res := linTranTestMat1.Apply(linTranTestVec)
 	expected := []float64{19, 20, 36}
 	for i, x := range expected {
-		if math.Abs(x-res.Output()[i]) > linTranTestPrec {
+		if math.Abs(x-res.Output()[i]) > funcTestPrec {
 			t.Errorf("bad output %d: expected %f got %f", i, x, res.Output()[i])
 		}
 	}
@@ -73,7 +68,7 @@ func TestLinTranRGradient(t *testing.T) {
 	funcTest := &RFuncTest{
 		F:     ComposedRFunc{linTranTestMat1, linTranTestMat2, AddTwice{}},
 		Vars:  linTranTestVariables,
-		Input: NewRVariable(linTranTestVec, linTranTestRVec),
+		Input: linTranTestVec,
 		RV:    linTranTestRVec,
 	}
 	funcTest.Run(t)

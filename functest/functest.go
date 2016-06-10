@@ -1,4 +1,4 @@
-package functest
+package autofunc
 
 import (
 	"math"
@@ -32,7 +32,8 @@ type GradientTest interface {
 type FuncTest struct {
 	F     Func
 	Vars  []*Variable
-	Input Result
+	Input *Variable
+	Cache *VectorCache
 }
 
 func (f *FuncTest) Variables() []*Variable {
@@ -66,13 +67,27 @@ func (f *FuncTest) Jacobian() []Gradient {
 
 func (f *FuncTest) Run(t *testing.T) {
 	testFuncGradient(t, f)
+
+	testFuncCacheUsage(t, f.Cache, func() interface{} {
+		output := f.F.Apply(f.Input)
+		for i := range output.Output() {
+			grad := NewGradient(f.Vars)
+			outGrad := make(linalg.Vector, len(output.Output()))
+			outGrad[i] = 1
+			output.PropagateGradient(outGrad, grad)
+		}
+		return output
+	}, func(res interface{}) {
+		res.(Result).Release()
+	})
 }
 
 type RFuncTest struct {
 	F     RFunc
 	Vars  []*Variable
-	Input RResult
+	Input *Variable
 	RV    RVector
+	Cache *VectorCache
 }
 
 func (f *RFuncTest) Variables() []*Variable {
@@ -80,18 +95,19 @@ func (f *RFuncTest) Variables() []*Variable {
 }
 
 func (f *RFuncTest) ApproxPartials(param *float64) linalg.Vector {
+	inputRV := NewRVariableCache(f.Input, f.RV, f.Cache)
 	old := *param
 	*param = old + funcTestDelta
-	val1 := f.F.ApplyR(f.RV, f.Input).Output()
+	val1 := f.F.ApplyR(f.RV, inputRV).Output()
 	*param = old - funcTestDelta
-	val2 := f.F.ApplyR(f.RV, f.Input).Output()
+	val2 := f.F.ApplyR(f.RV, inputRV).Output()
 	*param = old
 	return val1.Add(val2.Scale(-1)).Scale(1.0 / (2 * funcTestDelta))
 }
 
 func (f *RFuncTest) Jacobian() []Gradient {
 	var jacobian []Gradient
-	output := f.F.ApplyR(f.RV, f.Input)
+	output := f.F.ApplyR(f.RV, f.rInput())
 
 	for i := range output.Output() {
 		grad := NewGradient(f.Vars)
@@ -109,7 +125,7 @@ func (f *RFuncTest) Jacobian() []Gradient {
 func (f *RFuncTest) Run(t *testing.T) {
 	testFuncGradient(t, f)
 
-	output := f.F.ApplyR(f.RV, f.Input)
+	output := f.F.ApplyR(f.RV, f.rInput())
 
 	approxGrads, outGrads := f.approximateR()
 
@@ -132,12 +148,27 @@ func (f *RFuncTest) Run(t *testing.T) {
 			for i, x := range expected {
 				a := actual[i]
 				if math.Abs(a-x) > funcTestPrec {
-					t.Errorf("var %d, output %d, entry %d: expected %f got %f (r-gradient)",
+					t.Errorf("var %d, output %d, entry %d: expected %f got %f",
 						varIdx, outIdx, i, x, a)
 				}
 			}
 		}
 	}
+
+	testFuncCacheUsage(t, f.Cache, func() interface{} {
+		output := f.F.ApplyR(f.RV, f.rInput())
+		for i := range output.Output() {
+			grad := NewGradient(f.Vars)
+			rgrad := NewRGradient(f.Vars)
+			outGrad := make(linalg.Vector, len(output.Output()))
+			outGrad[i] = 1
+			outGradR := make(linalg.Vector, len(output.Output()))
+			output.PropagateRGradient(outGrad, outGradR, rgrad, grad)
+		}
+		return output
+	}, func(res interface{}) {
+		res.(RResult).Release()
+	})
 }
 
 func (f *RFuncTest) approximateR() ([]RGradient, linalg.Vector) {
@@ -147,7 +178,7 @@ func (f *RFuncTest) approximateR() ([]RGradient, linalg.Vector) {
 
 	unusedRGrad := NewRGradient(f.Variables())
 
-	res1 := f.F.ApplyR(f.RV, f.Input)
+	res1 := f.F.ApplyR(f.RV, f.rInput())
 	var grads1 []Gradient
 
 	for outputIdx := range res1.Output() {
@@ -163,7 +194,7 @@ func (f *RFuncTest) approximateR() ([]RGradient, linalg.Vector) {
 		v.Vector.Add(add.Copy().Scale(-2 * funcTestDelta))
 	}
 
-	res2 := f.F.ApplyR(f.RV, f.Input)
+	res2 := f.F.ApplyR(f.RV, f.rInput())
 	var grads2 []Gradient
 
 	for outputIdx := range res2.Output() {
@@ -194,6 +225,10 @@ func (f *RFuncTest) approximateR() ([]RGradient, linalg.Vector) {
 	return resGrads, outGrads
 }
 
+func (f *RFuncTest) rInput() RResult {
+	return NewRVariableCache(f.Input, f.RV, f.Cache)
+}
+
 func testFuncGradient(t *testing.T, f GradientTest) {
 	jacobian := f.Jacobian()
 	for varIdx, variable := range f.Variables() {
@@ -204,10 +239,51 @@ func testFuncGradient(t *testing.T, f GradientTest) {
 				actual := grad[variable][elementIdx]
 				expected := approxVec[outputIdx]
 				if math.Abs(actual-expected) > funcTestPrec {
-					t.Errorf("var %d, output %d, entry %d: expected %f got %f (gradient)",
+					t.Errorf("var %d, output %d, entry %d: expected %f got %f",
 						varIdx, outputIdx, elementIdx, expected, actual)
 				}
 			}
 		}
+	}
+}
+
+func testFuncCacheUsage(t *testing.T, c *VectorCache, run func() interface{},
+	release func(interface{})) {
+	c.Clear()
+
+	run()
+	release(run())
+
+	// Give the cache an excess of every slice size in
+	// order to catch some leaks.
+	for key := range c.UsageHistogram() {
+		c.Free(make(linalg.Vector, key))
+	}
+
+	baseAmount := c.FloatCount()
+
+	res := run()
+	preAmount := c.FloatCount()
+	release(res)
+	postAmount := c.FloatCount()
+	release(res)
+	postAmountTwo := c.FloatCount()
+	if postAmountTwo != postAmount {
+		t.Fatalf("second release went from count %d to count %d", postAmount, postAmountTwo)
+	}
+
+	if postAmount != baseAmount {
+		t.Errorf("before run+release had %d free, now have %d free", baseAmount, postAmount)
+	}
+
+	res = run()
+	newPreAmount := c.FloatCount()
+	if newPreAmount != preAmount {
+		t.Errorf("after release+run, size went from %d to %d", preAmount, newPreAmount)
+	}
+	release(res)
+	newPostAmount := c.FloatCount()
+	if newPostAmount != postAmount {
+		t.Errorf("After run+release, size went from %d to %d", postAmount, newPostAmount)
 	}
 }

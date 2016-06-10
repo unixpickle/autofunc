@@ -74,7 +74,7 @@ func TestArithmeticRGradients(t *testing.T) {
 	f := &RFuncTest{
 		F:     ComposedRFunc{arithmeticTestFunc{}, AddTwice{}},
 		Vars:  arithmeticTestVars,
-		Input: NewRVariable(arithmeticTestVec4, arithmeticTestRVec),
+		Input: arithmeticTestVec4,
 		RV:    arithmeticTestRVec,
 	}
 	f.Run(t)

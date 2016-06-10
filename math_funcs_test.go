@@ -28,7 +28,7 @@ func TestExpRGradient(t *testing.T) {
 	funcTest := &RFuncTest{
 		F:     ComposedRFunc{Exp{}, AddTwice{}},
 		Vars:  mathFuncTestVars,
-		Input: NewRVariable(mathFuncTestVec, mathFuncTestRVec),
+		Input: mathFuncTestVec,
 		RV:    mathFuncTestRVec,
 	}
 	funcTest.Run(t)
@@ -47,7 +47,7 @@ func TestLogRGradient(t *testing.T) {
 	funcTest := &RFuncTest{
 		F:     ComposedRFunc{Log{}, AddTwice{}},
 		Vars:  mathFuncTestVars,
-		Input: NewRVariable(mathFuncTestVec, mathFuncTestRVec),
+		Input: mathFuncTestVec,
 		RV:    mathFuncTestRVec,
 	}
 	funcTest.Run(t)
@@ -66,7 +66,7 @@ func TestSquaredNormRGradient(t *testing.T) {
 	funcTest := &RFuncTest{
 		F:     ComposedRFunc{SquaredNorm{}, AddTwice{}},
 		Vars:  mathFuncTestVars,
-		Input: NewRVariable(mathFuncTestVec, mathFuncTestRVec),
+		Input: mathFuncTestVec,
 		RV:    mathFuncTestRVec,
 	}
 	funcTest.Run(t)
@@ -85,7 +85,7 @@ func TestSigmoidRGradient(t *testing.T) {
 	funcTest := &RFuncTest{
 		F:     ComposedRFunc{Sigmoid{}, Sigmoid{}, Sigmoid{}, AddTwice{}},
 		Vars:  mathFuncTestVars,
-		Input: NewRVariable(mathFuncTestVec, mathFuncTestRVec),
+		Input: mathFuncTestVec,
 		RV:    mathFuncTestRVec,
 	}
 	funcTest.Run(t)
@@ -106,7 +106,7 @@ func TestSoftmaxRGradient(t *testing.T) {
 	funcTest := &RFuncTest{
 		F:     ComposedRFunc{&Softmax{}, AddTwice{}},
 		Vars:  mathFuncTestVars,
-		Input: NewRVariable(mathFuncTestVec, mathFuncTestRVec),
+		Input: mathFuncTestVec,
 		RV:    mathFuncTestRVec,
 	}
 	funcTest.Run(t)

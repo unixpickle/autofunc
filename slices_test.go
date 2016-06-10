@@ -58,7 +58,7 @@ func TestSlicesRGradients(t *testing.T) {
 	f := &RFuncTest{
 		F:     slicesTestFunc{},
 		Vars:  slicesTestVars,
-		Input: NewRVariable(slicesTestVec2, slicesTestRVec),
+		Input: slicesTestVec2,
 		RV:    slicesTestRVec,
 	}
 	f.Run(t)

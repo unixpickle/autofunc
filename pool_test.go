@@ -36,7 +36,7 @@ func TestPoolR(t *testing.T) {
 	f := RFuncTest{
 		F:     testFunc,
 		Vars:  []*Variable{poolTestVar},
-		Input: NewRVariable(poolTestVar, poolTestRVec),
+		Input: poolTestVar,
 		RV:    poolTestRVec,
 	}
 	f.Run(t)
