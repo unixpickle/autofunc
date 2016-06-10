@@ -25,11 +25,7 @@ func (l *LinTran) Apply(in Result) Result {
 	if len(in.Output()) != l.Cols {
 		panic("input length is invalid")
 	}
-	return &linTranResult{
-		Matrix:    l,
-		Input:     in,
-		OutputVec: l.multiply(in.Output()),
-	}
+	return l.Batch(in, 1)
 }
 
 // ApplyR is like Apply but for RResults.
@@ -50,11 +46,11 @@ func (l *LinTran) ApplyR(v RVector, in RResult) RResult {
 // Batch performs matrix multiplication on all
 // of the input vectors.
 func (l *LinTran) Batch(in Result, n int) Result {
-	b := FuncBatcher{
-		F:     l,
-		Cache: l.Cache,
+	return &linTranResult{
+		Matrix:    l,
+		Input:     in,
+		OutputVec: l.multiply(in.Output()),
 	}
-	return b.Batch(in, n)
 }
 
 // BatchR performs matrix multiplication on all
@@ -68,7 +64,8 @@ func (l *LinTran) BatchR(v RVector, in RResult, n int) RResult {
 }
 
 func (l *LinTran) multiply(vec linalg.Vector) linalg.Vector {
-	res := l.Cache.Alloc(l.Rows)
+	n := len(vec) / l.Cols
+	res := l.Cache.Alloc(l.Rows * n)
 
 	mat := blas64.General{
 		Rows:   l.Rows,
@@ -76,15 +73,19 @@ func (l *LinTran) multiply(vec linalg.Vector) linalg.Vector {
 		Stride: l.Cols,
 		Data:   l.Data.Vector,
 	}
-	inVec := blas64.Vector{
-		Inc:  1,
-		Data: vec,
+	inMat := blas64.General{
+		Rows:   n,
+		Cols:   l.Cols,
+		Stride: l.Cols,
+		Data:   vec,
 	}
-	outVec := blas64.Vector{
-		Inc:  1,
-		Data: res,
+	outMat := blas64.General{
+		Rows:   n,
+		Cols:   l.Rows,
+		Stride: l.Rows,
+		Data:   res,
 	}
-	blas64.Gemv(blas.NoTrans, 1, mat, inVec, 0, outVec)
+	blas64.Gemm(blas.NoTrans, blas.Trans, 1, inMat, mat, 0, outMat)
 
 	return res
 }
@@ -108,26 +109,45 @@ func (l *LinTran) multiplyR(rData *RVariable, rVec RResult) linalg.Vector {
 }
 
 func (l *LinTran) dataGradient(upstream linalg.Vector, grad Gradient, input linalg.Vector) {
+	n := len(input) / l.Cols
 	gradMat := blas64.General{
 		Data:   grad[l.Data],
 		Rows:   l.Rows,
 		Cols:   l.Cols,
 		Stride: l.Cols,
 	}
-	partialVec := blas64.Vector{
-		Data: upstream,
-		Inc:  1,
+	if n == 1 {
+		partialVec := blas64.Vector{
+			Data: upstream,
+			Inc:  1,
+		}
+		inputVec := blas64.Vector{
+			Data: input,
+			Inc:  1,
+		}
+		blas64.Ger(1, partialVec, inputVec, gradMat)
+	} else {
+		partialMat := blas64.General{
+			Rows:   n,
+			Cols:   l.Rows,
+			Stride: l.Rows,
+			Data:   upstream,
+		}
+		inputMat := blas64.General{
+			Rows:   n,
+			Cols:   l.Cols,
+			Stride: l.Cols,
+			Data:   input,
+		}
+		blas64.Gemm(blas.Trans, blas.NoTrans, 1, partialMat, inputMat, 1, gradMat)
 	}
-	inputVec := blas64.Vector{
-		Data: input,
-		Inc:  1,
-	}
-	blas64.Ger(1, partialVec, inputVec, gradMat)
 }
 
 func (l *LinTran) inputGradient(upstream linalg.Vector) linalg.Vector {
+	n := len(upstream) / l.Rows
+
 	matData := l.Data.Output()
-	gradVal := l.Cache.Alloc(l.Cols)
+	gradVal := l.Cache.Alloc(l.Cols * n)
 
 	matrix := blas64.General{
 		Rows:   l.Rows,
@@ -135,9 +155,26 @@ func (l *LinTran) inputGradient(upstream linalg.Vector) linalg.Vector {
 		Stride: l.Cols,
 		Data:   matData,
 	}
-	vectorIn := blas64.Vector{Data: upstream, Inc: 1}
-	vectorOut := blas64.Vector{Data: gradVal, Inc: 1}
-	blas64.Gemv(blas.Trans, 1, matrix, vectorIn, 0, vectorOut)
+
+	if n == 1 {
+		vectorIn := blas64.Vector{Data: upstream, Inc: 1}
+		vectorOut := blas64.Vector{Data: gradVal, Inc: 1}
+		blas64.Gemv(blas.Trans, 1, matrix, vectorIn, 0, vectorOut)
+	} else {
+		upstreamMat := blas64.General{
+			Rows:   n,
+			Cols:   l.Rows,
+			Stride: l.Rows,
+			Data:   upstream,
+		}
+		outputMat := blas64.General{
+			Rows:   n,
+			Cols:   l.Cols,
+			Stride: l.Cols,
+			Data:   gradVal,
+		}
+		blas64.Gemm(blas.NoTrans, blas.NoTrans, 1, upstreamMat, matrix, 0, outputMat)
+	}
 
 	return gradVal
 }
@@ -155,10 +192,6 @@ func (l *linTranResult) Output() linalg.Vector {
 }
 
 func (l *linTranResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
-	if len(upstream) != l.Matrix.Rows {
-		panic("output dimension mismatch")
-	}
-
 	if !l.Matrix.Data.Constant(grad) {
 		l.Matrix.dataGradient(upstream, grad, l.Input.Output())
 	}
