@@ -22,6 +22,9 @@ type LinTran struct {
 
 // Apply performs matrix multiplication (i.e. m*in).
 func (l *LinTran) Apply(in Result) Result {
+	if len(in.Output()) != l.Cols {
+		panic("input length is invalid")
+	}
 	return &linTranResult{
 		Matrix:    l,
 		Input:     in,
@@ -31,6 +34,9 @@ func (l *LinTran) Apply(in Result) Result {
 
 // ApplyR is like Apply but for RResults.
 func (l *LinTran) ApplyR(v RVector, in RResult) RResult {
+	if len(in.Output()) != l.Cols {
+		panic("input length is invalid")
+	}
 	rData := NewRVariableCache(l.Data, v, l.Cache)
 	return &linTranRResult{
 		Matrix:     l,
@@ -39,6 +45,26 @@ func (l *LinTran) ApplyR(v RVector, in RResult) RResult {
 		Input:      in,
 		RData:      rData,
 	}
+}
+
+// Batch performs matrix multiplication on all
+// of the input vectors.
+func (l *LinTran) Batch(in Result, n int) Result {
+	b := FuncBatcher{
+		F:     l,
+		Cache: l.Cache,
+	}
+	return b.Batch(in, n)
+}
+
+// BatchR performs matrix multiplication on all
+// of the input vectors.
+func (l *LinTran) BatchR(v RVector, in RResult, n int) RResult {
+	b := RFuncBatcher{
+		F:     l,
+		Cache: l.Cache,
+	}
+	return b.BatchR(v, in, n)
 }
 
 func (l *LinTran) multiply(vec linalg.Vector) linalg.Vector {
