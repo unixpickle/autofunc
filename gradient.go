@@ -51,6 +51,11 @@ func (g Gradient) AddToVars(scale float64) {
 	}
 }
 
+// Copy creates a copy of a Gradient.
+func (g Gradient) Copy() Gradient {
+	return copyVariableMap(g)
+}
+
 // An RGradient is like a Gradient, but its entries
 // correspond to the derivatives of the components
 // of the gradient with respect to a variable r.
@@ -74,6 +79,11 @@ func (g RGradient) Add(g1 RGradient) {
 // Scale scales all the partials in g by f.
 func (g RGradient) Scale(f float64) {
 	scaleVariableMap(g, f)
+}
+
+// Copy creates a copy of an RGradient.
+func (g RGradient) Copy() RGradient {
+	return copyVariableMap(g)
 }
 
 // An RVector specifies how much each variable
@@ -113,4 +123,14 @@ func scaleVariableMap(m map[*Variable]linalg.Vector, f float64) {
 	for _, v := range m {
 		v.Scale(f)
 	}
+}
+
+func copyVariableMap(m map[*Variable]linalg.Vector) map[*Variable]linalg.Vector {
+	res := map[*Variable]linalg.Vector{}
+	for k, v := range m {
+		newV := make(linalg.Vector, len(v))
+		copy(newV, v)
+		res[k] = newV
+	}
+	return res
 }
