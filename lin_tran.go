@@ -73,19 +73,32 @@ func (l *LinTran) multiply(vec linalg.Vector) linalg.Vector {
 		Stride: l.Cols,
 		Data:   l.Data.Vector,
 	}
-	inMat := blas64.General{
-		Rows:   n,
-		Cols:   l.Cols,
-		Stride: l.Cols,
-		Data:   vec,
+
+	if n == 1 {
+		inVec := blas64.Vector{
+			Inc:  1,
+			Data: vec,
+		}
+		outVec := blas64.Vector{
+			Inc:  1,
+			Data: res,
+		}
+		blas64.Gemv(blas.NoTrans, 1, mat, inVec, 0, outVec)
+	} else {
+		inMat := blas64.General{
+			Rows:   n,
+			Cols:   l.Cols,
+			Stride: l.Cols,
+			Data:   vec,
+		}
+		outMat := blas64.General{
+			Rows:   n,
+			Cols:   l.Rows,
+			Stride: l.Rows,
+			Data:   res,
+		}
+		blas64.Gemm(blas.NoTrans, blas.Trans, 1, inMat, mat, 0, outMat)
 	}
-	outMat := blas64.General{
-		Rows:   n,
-		Cols:   l.Rows,
-		Stride: l.Rows,
-		Data:   res,
-	}
-	blas64.Gemm(blas.NoTrans, blas.Trans, 1, inMat, mat, 0, outMat)
 
 	return res
 }
@@ -109,26 +122,43 @@ func (l *LinTran) multiplyR(rData *RVariable, rVec RResult) linalg.Vector {
 		Stride: l.Cols,
 		Data:   rData.ROutput(),
 	}
-	inMat := blas64.General{
-		Rows:   n,
-		Cols:   l.Cols,
-		Stride: l.Cols,
-		Data:   vec,
+	if n == 1 {
+		inVec := blas64.Vector{
+			Inc:  1,
+			Data: vec,
+		}
+		inVecR := blas64.Vector{
+			Inc:  1,
+			Data: vecR,
+		}
+		outVec := blas64.Vector{
+			Inc:  1,
+			Data: res,
+		}
+		blas64.Gemv(blas.NoTrans, 1, matR, inVec, 0, outVec)
+		blas64.Gemv(blas.NoTrans, 1, mat, inVecR, 1, outVec)
+	} else {
+		inMat := blas64.General{
+			Rows:   n,
+			Cols:   l.Cols,
+			Stride: l.Cols,
+			Data:   vec,
+		}
+		inMatR := blas64.General{
+			Rows:   n,
+			Cols:   l.Cols,
+			Stride: l.Cols,
+			Data:   vecR,
+		}
+		outMat := blas64.General{
+			Rows:   n,
+			Cols:   l.Rows,
+			Stride: l.Rows,
+			Data:   res,
+		}
+		blas64.Gemm(blas.NoTrans, blas.Trans, 1, inMat, matR, 0, outMat)
+		blas64.Gemm(blas.NoTrans, blas.Trans, 1, inMatR, mat, 1, outMat)
 	}
-	inMatR := blas64.General{
-		Rows:   n,
-		Cols:   l.Cols,
-		Stride: l.Cols,
-		Data:   vecR,
-	}
-	outMat := blas64.General{
-		Rows:   n,
-		Cols:   l.Rows,
-		Stride: l.Rows,
-		Data:   res,
-	}
-	blas64.Gemm(blas.NoTrans, blas.Trans, 1, inMat, matR, 0, outMat)
-	blas64.Gemm(blas.NoTrans, blas.Trans, 1, inMatR, mat, 1, outMat)
 
 	return res
 }
