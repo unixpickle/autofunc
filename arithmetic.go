@@ -6,16 +6,7 @@ import (
 	"github.com/unixpickle/num-analysis/linalg"
 )
 
-// Arithmetic performs arithmetic operations using
-// a given VectorCache.
-type Arithmetic struct {
-	Cache *VectorCache
-}
-
-var DefaultArithmetic = Arithmetic{Cache: DefaultVectorCache}
-
 type resultSum struct {
-	Cache     *VectorCache
 	OutputVec linalg.Vector
 
 	R1 Result
@@ -23,24 +14,12 @@ type resultSum struct {
 }
 
 // Add adds two Results.
-func (a *Arithmetic) Add(r1, r2 Result) Result {
-	r1Vec := r1.Output()
-	r2Vec := r2.Output()
-	result := a.Cache.Alloc(len(r1Vec))
-	for i, x := range r1Vec {
-		result[i] = x + r2Vec[i]
-	}
+func Add(r1, r2 Result) Result {
 	return &resultSum{
-		Cache:     a.Cache,
-		OutputVec: result,
+		OutputVec: r1.Output().Copy().Add(r2.Output()),
 		R1:        r1,
 		R2:        r2,
 	}
-}
-
-// Add is equivalent to DefaultArithmetic.Add.
-func Add(r1, r2 Result) Result {
-	return DefaultArithmetic.Add(r1, r2)
 }
 
 func (r *resultSum) Output() linalg.Vector {
@@ -67,15 +46,7 @@ func (r *resultSum) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	}
 }
 
-func (r *resultSum) Release() {
-	r.Cache.Free(r.OutputVec)
-	r.OutputVec = nil
-	r.R1.Release()
-	r.R2.Release()
-}
-
 type rresultSum struct {
-	Cache      *VectorCache
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 
@@ -84,29 +55,13 @@ type rresultSum struct {
 }
 
 // AddR adds two RResults.
-func (a *Arithmetic) AddR(r1, r2 RResult) RResult {
-	r1Vec := r1.Output()
-	r1VecR := r1.ROutput()
-	r2Vec := r2.Output()
-	r2VecR := r2.ROutput()
-	result := a.Cache.Alloc(len(r1Vec))
-	resultR := a.Cache.Alloc(len(r1Vec))
-	for i, x := range r1Vec {
-		result[i] = x + r2Vec[i]
-		resultR[i] = r1VecR[i] + r2VecR[i]
-	}
+func AddR(r1, r2 RResult) RResult {
 	return &rresultSum{
-		Cache:      a.Cache,
-		OutputVec:  result,
-		ROutputVec: resultR,
+		OutputVec:  r1.Output().Copy().Add(r2.Output()),
+		ROutputVec: r1.ROutput().Copy().Add(r2.ROutput()),
 		R1:         r1,
 		R2:         r2,
 	}
-}
-
-// AddR is equivalent to DefaultArithmetic.AddR.
-func AddR(r1, r2 RResult) RResult {
-	return DefaultArithmetic.AddR(r1, r2)
 }
 
 func (r *rresultSum) Output() linalg.Vector {
@@ -140,40 +95,24 @@ func (r *rresultSum) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 }
 
-func (r *rresultSum) Release() {
-	r.Cache.Free(r.OutputVec)
-	r.Cache.Free(r.ROutputVec)
-	r.OutputVec = nil
-	r.ROutputVec = nil
-	r.R1.Release()
-	r.R2.Release()
-}
-
 type addScalerResult struct {
-	Cache     *VectorCache
 	OutputVec linalg.Vector
 	Scaler    float64
 	Input     Result
 }
 
 // AddScaler adds a scaler to every component of a vector.
-func (a *Arithmetic) AddScaler(r Result, f float64) Result {
+func AddScaler(r Result, f float64) Result {
 	inVec := r.Output()
-	res := a.Cache.Alloc(len(inVec))
+	res := make(linalg.Vector, len(inVec))
 	for i, x := range inVec {
 		res[i] = x + f
 	}
 	return &addScalerResult{
-		Cache:     a.Cache,
 		OutputVec: res,
 		Scaler:    f,
 		Input:     r,
 	}
-}
-
-// AddScaler is equivalent to DefaultArithmetic.AddScaler.
-func AddScaler(r Result, f float64) Result {
-	return DefaultArithmetic.AddScaler(r, f)
 }
 
 func (a *addScalerResult) Output() linalg.Vector {
@@ -188,37 +127,24 @@ func (a *addScalerResult) PropagateGradient(upstream linalg.Vector, grad Gradien
 	a.Input.PropagateGradient(upstream, grad)
 }
 
-func (a *addScalerResult) Release() {
-	a.Cache.Free(a.OutputVec)
-	a.OutputVec = nil
-	a.Input.Release()
-}
-
 type addScalerRResult struct {
-	Cache     *VectorCache
 	OutputVec linalg.Vector
 	Scaler    float64
 	Input     RResult
 }
 
 // AddScalerR is like AddScaler, but with RResults.
-func (a *Arithmetic) AddScalerR(r RResult, f float64) RResult {
+func AddScalerR(r RResult, f float64) RResult {
 	inVec := r.Output()
-	res := a.Cache.Alloc(len(inVec))
+	res := make(linalg.Vector, len(inVec))
 	for i, x := range inVec {
 		res[i] = x + f
 	}
 	return &addScalerRResult{
-		Cache:     a.Cache,
 		OutputVec: res,
 		Scaler:    f,
 		Input:     r,
 	}
-}
-
-// AddScalerR is equivalent to DefaultArithmetic.AddScalerR.
-func AddScalerR(r RResult, f float64) RResult {
-	return DefaultArithmetic.AddScalerR(r, f)
 }
 
 func (a *addScalerRResult) Output() linalg.Vector {
@@ -238,14 +164,7 @@ func (a *addScalerRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	a.Input.PropagateRGradient(upstream, upstreamR, rgrad, grad)
 }
 
-func (a *addScalerRResult) Release() {
-	a.Cache.Free(a.OutputVec)
-	a.OutputVec = nil
-	a.Input.Release()
-}
-
 type resultProduct struct {
-	Cache     *VectorCache
 	OutputVec linalg.Vector
 
 	R1 Result
@@ -253,27 +172,21 @@ type resultProduct struct {
 }
 
 // Mul multiplies two Results component-wise.
-func (a *Arithmetic) Mul(r1, r2 Result) Result {
+func Mul(r1, r2 Result) Result {
 	r1Output := r1.Output()
 	r2Output := r2.Output()
 	if len(r1Output) != len(r2Output) {
 		panic("vector sizes do not match")
 	}
-	product := a.Cache.Alloc(len(r1Output))
+	product := make(linalg.Vector, len(r1Output))
 	for i, x := range r1Output {
 		product[i] = x * r2Output[i]
 	}
 	return &resultProduct{
-		Cache:     a.Cache,
 		OutputVec: product,
 		R1:        r1,
 		R2:        r2,
 	}
-}
-
-// Mul is equivalent to DefaultArithmetic.Mul.
-func Mul(r1, r2 Result) Result {
-	return DefaultArithmetic.Mul(r1, r2)
 }
 
 func (r *resultProduct) Output() linalg.Vector {
@@ -304,15 +217,7 @@ func (r *resultProduct) PropagateGradient(upstream linalg.Vector, grad Gradient)
 	}
 }
 
-func (r *resultProduct) Release() {
-	r.Cache.Free(r.OutputVec)
-	r.OutputVec = nil
-	r.R1.Release()
-	r.R2.Release()
-}
-
 type rresultProduct struct {
-	Cache      *VectorCache
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 
@@ -321,7 +226,7 @@ type rresultProduct struct {
 }
 
 // MulR multiplies two RResults component-wise.
-func (a *Arithmetic) MulR(r1, r2 RResult) RResult {
+func MulR(r1, r2 RResult) RResult {
 	r1Output := r1.Output()
 	r1OutputR := r1.ROutput()
 	r2Output := r2.Output()
@@ -329,25 +234,19 @@ func (a *Arithmetic) MulR(r1, r2 RResult) RResult {
 	if len(r1Output) != len(r2Output) {
 		panic("vector sizes do not match")
 	}
-	product := a.Cache.Alloc(len(r1Output))
-	productR := a.Cache.Alloc(len(r1Output))
+	product := make(linalg.Vector, len(r1Output))
+	productR := make(linalg.Vector, len(r1Output))
 	for i, x := range r1Output {
 		y := r2Output[i]
 		product[i] = x * y
 		productR[i] = x*r2OutputR[i] + r1OutputR[i]*y
 	}
 	return &rresultProduct{
-		Cache:      a.Cache,
 		OutputVec:  product,
 		ROutputVec: productR,
 		R1:         r1,
 		R2:         r2,
 	}
-}
-
-// MulR is equivalent to DefaultArithmetic.MulR.
-func MulR(r1, r2 RResult) RResult {
-	return DefaultArithmetic.MulR(r1, r2)
 }
 
 func (r *rresultProduct) Output() linalg.Vector {
@@ -390,40 +289,19 @@ func (r *rresultProduct) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 }
 
-func (r *rresultProduct) Release() {
-	r.Cache.Free(r.OutputVec)
-	r.Cache.Free(r.ROutputVec)
-	r.OutputVec = nil
-	r.ROutputVec = nil
-	r.R1.Release()
-	r.R2.Release()
-}
-
 type scaledResult struct {
-	Cache     *VectorCache
 	OutputVec linalg.Vector
 	Scaler    float64
 	Input     Result
 }
 
 // Scale scales a Result component-wise.
-func (a *Arithmetic) Scale(r Result, f float64) Result {
-	input := r.Output()
-	result := a.Cache.Alloc(len(input))
-	for i, x := range input {
-		result[i] = x * f
-	}
+func Scale(r Result, f float64) Result {
 	return &scaledResult{
-		Cache:     a.Cache,
-		OutputVec: result,
+		OutputVec: r.Output().Copy().Scale(f),
 		Scaler:    f,
 		Input:     r,
 	}
-}
-
-// Scale is equivalent to DefaultArithmetic.Scale.
-func Scale(r Result, f float64) Result {
-	return DefaultArithmetic.Scale(r, f)
 }
 
 func (s *scaledResult) Output() linalg.Vector {
@@ -440,14 +318,7 @@ func (s *scaledResult) PropagateGradient(upstream linalg.Vector, grad Gradient) 
 	}
 }
 
-func (s *scaledResult) Release() {
-	s.Cache.Free(s.OutputVec)
-	s.OutputVec = nil
-	s.Input.Release()
-}
-
 type scaledRResult struct {
-	Cache      *VectorCache
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	Scaler     float64
@@ -455,29 +326,13 @@ type scaledRResult struct {
 }
 
 // ScaleR scales an RResult component-wise.
-func (a *Arithmetic) ScaleR(r RResult, f float64) RResult {
-	input := r.Output()
-	inputR := r.ROutput()
-	result := a.Cache.Alloc(len(input))
-	resultR := a.Cache.Alloc(len(input))
-	for i, x := range input {
-		result[i] = x * f
-	}
-	for i, x := range inputR {
-		resultR[i] = x * f
-	}
+func ScaleR(r RResult, f float64) RResult {
 	return &scaledRResult{
-		Cache:      a.Cache,
-		OutputVec:  result,
-		ROutputVec: resultR,
+		OutputVec:  r.Output().Copy().Scale(f),
+		ROutputVec: r.ROutput().Copy().Scale(f),
 		Scaler:     f,
 		Input:      r,
 	}
-}
-
-// ScaleR is equivalent to DefaultArithmetic.ScaleR.
-func ScaleR(r RResult, f float64) RResult {
-	return DefaultArithmetic.ScaleR(r, f)
 }
 
 func (s *scaledRResult) Output() linalg.Vector {
@@ -500,16 +355,7 @@ func (s *scaledRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 }
 
-func (s *scaledRResult) Release() {
-	s.Cache.Free(s.OutputVec)
-	s.Cache.Free(s.ROutputVec)
-	s.OutputVec = nil
-	s.ROutputVec = nil
-	s.Input.Release()
-}
-
 type scaleFirstResult struct {
-	Cache     *VectorCache
 	OutputVec linalg.Vector
 	Scaler    Result
 	Input     Result
@@ -517,24 +363,13 @@ type scaleFirstResult struct {
 
 // scaleFirstResult scales all the elements of
 // a vector by the first element of a vector.
-func (a *Arithmetic) ScaleFirst(in, scaler Result) Result {
+func ScaleFirst(in Result, scaler Result) Result {
 	f := scaler.Output()[0]
-	input := in.Output()
-	result := a.Cache.Alloc(len(input))
-	for i, x := range input {
-		result[i] = x * f
-	}
 	return &scaleFirstResult{
-		Cache:     a.Cache,
-		OutputVec: result,
+		OutputVec: in.Output().Copy().Scale(f),
 		Scaler:    scaler,
 		Input:     in,
 	}
-}
-
-// ScaleFirst is equivalent to DefaultArithmetic.ScaleFirst.
-func ScaleFirst(in, scaler Result) Result {
-	return DefaultArithmetic.ScaleFirst(in, scaler)
 }
 
 func (s *scaleFirstResult) Output() linalg.Vector {
@@ -560,15 +395,7 @@ func (s *scaleFirstResult) PropagateGradient(upstream linalg.Vector, grad Gradie
 	}
 }
 
-func (s *scaleFirstResult) Release() {
-	s.Cache.Free(s.OutputVec)
-	s.OutputVec = nil
-	s.Input.Release()
-	s.Scaler.Release()
-}
-
 type scaleFirstRResult struct {
-	Cache      *VectorCache
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	Scaler     RResult
@@ -576,35 +403,15 @@ type scaleFirstRResult struct {
 }
 
 // ScaleFirstR is like ScaleFirst, but for RResults.
-func (a *Arithmetic) ScaleFirstR(in, scaler RResult) RResult {
+func ScaleFirstR(in RResult, scaler RResult) RResult {
 	f := scaler.Output()[0]
 	fR := scaler.ROutput()[0]
-
-	input := in.Output()
-	output := a.Cache.Alloc(len(input))
-	for i, x := range input {
-		output[i] = x * f
-	}
-
-	inputR := in.ROutput()
-	outputR := a.Cache.Alloc(len(input))
-	for i, x := range input {
-		xR := inputR[i]
-		outputR[i] = x*fR + xR*f
-	}
-
 	return &scaleFirstRResult{
-		Cache:      a.Cache,
-		OutputVec:  output,
-		ROutputVec: outputR,
+		OutputVec:  in.Output().Copy().Scale(f),
+		ROutputVec: in.Output().Copy().Scale(fR).Add(in.ROutput().Copy().Scale(f)),
 		Scaler:     scaler,
 		Input:      in,
 	}
-}
-
-// ScaleFirstR is equivalent to DefaultArithmetic.ScaleFirstR.
-func ScaleFirstR(in, scaler RResult) RResult {
-	return DefaultArithmetic.ScaleFirstR(in, scaler)
 }
 
 func (s *scaleFirstRResult) Output() linalg.Vector {
@@ -641,38 +448,22 @@ func (s *scaleFirstRResult) PropagateRGradient(upstream, upstreamR linalg.Vector
 	}
 }
 
-func (s *scaleFirstRResult) Release() {
-	s.Cache.Free(s.OutputVec)
-	s.Cache.Free(s.ROutputVec)
-	s.OutputVec = nil
-	s.ROutputVec = nil
-	s.Scaler.Release()
-	s.Input.Release()
-}
-
 type resultSquare struct {
-	Cache     *VectorCache
 	OutputVec linalg.Vector
 	Input     Result
 }
 
 // Square squares every component of a Result.
-func (a *Arithmetic) Square(r Result) Result {
+func Square(r Result) Result {
 	rVec := r.Output()
-	out := a.Cache.Alloc(len(rVec))
+	out := make(linalg.Vector, len(rVec))
 	for i, x := range rVec {
 		out[i] = x * x
 	}
 	return &resultSquare{
-		Cache:     a.Cache,
 		OutputVec: out,
 		Input:     r,
 	}
-}
-
-// Square is equivalent to DefaultArithmetic.Square.
-func Square(r Result) Result {
-	return DefaultArithmetic.Square(r)
 }
 
 func (r *resultSquare) Output() linalg.Vector {
@@ -692,40 +483,27 @@ func (r *resultSquare) PropagateGradient(upstream linalg.Vector, grad Gradient) 
 	}
 }
 
-func (r *resultSquare) Release() {
-	r.Cache.Free(r.OutputVec)
-	r.OutputVec = nil
-	r.Input.Release()
-}
-
 type rresultSquare struct {
-	Cache      *VectorCache
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	Input      RResult
 }
 
 // SquareR squares every component of an RResult.
-func (a *Arithmetic) SquareR(r RResult) RResult {
+func SquareR(r RResult) RResult {
 	vec := r.Output()
 	vecR := r.ROutput()
-	out := a.Cache.Alloc(len(vec))
-	outR := a.Cache.Alloc(len(vec))
+	out := make(linalg.Vector, len(vec))
+	outR := make(linalg.Vector, len(vec))
 	for i, x := range vec {
 		out[i] = x * x
 		outR[i] = 2 * x * vecR[i]
 	}
 	return &rresultSquare{
-		Cache:      a.Cache,
 		OutputVec:  out,
 		ROutputVec: outR,
 		Input:      r,
 	}
-}
-
-// SquareR is equivalent to DefaultArithmetic.SquareR.
-func SquareR(r RResult) RResult {
-	return DefaultArithmetic.SquareR(r)
 }
 
 func (r *rresultSquare) Output() linalg.Vector {
@@ -752,38 +530,23 @@ func (r *rresultSquare) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 }
 
-func (r *rresultSquare) Release() {
-	r.Cache.Free(r.OutputVec)
-	r.Cache.Free(r.ROutputVec)
-	r.OutputVec = nil
-	r.ROutputVec = nil
-	r.Input.Release()
-}
-
 type resultInverse struct {
-	Cache     *VectorCache
 	OutputVec linalg.Vector
 	Input     Result
 }
 
 // Inverse computes component-wise reciprocals.
 // NaNs or Infs will result from 0-divisions.
-func (a *Arithmetic) Inverse(r Result) Result {
+func Inverse(r Result) Result {
 	inVec := r.Output()
-	outVec := a.Cache.Alloc(len(inVec))
+	outVec := make(linalg.Vector, len(inVec))
 	for i, x := range inVec {
 		outVec[i] = 1 / x
 	}
 	return &resultInverse{
-		Cache:     a.Cache,
 		OutputVec: outVec,
 		Input:     r,
 	}
-}
-
-// Inverse is equivalent to DefaultArithmetic.Inverse.
-func Inverse(r Result) Result {
-	return DefaultArithmetic.Inverse(r)
 }
 
 func (r *resultInverse) Output() linalg.Vector {
@@ -803,14 +566,7 @@ func (r *resultInverse) PropagateGradient(upstream linalg.Vector, grad Gradient)
 	}
 }
 
-func (r *resultInverse) Release() {
-	r.Cache.Free(r.OutputVec)
-	r.OutputVec = nil
-	r.Input.Release()
-}
-
 type rresultInverse struct {
-	Cache      *VectorCache
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	SquaredOut linalg.Vector
@@ -818,12 +574,12 @@ type rresultInverse struct {
 }
 
 // InverseR is like Inverse, but for RResults.
-func (a *Arithmetic) InverseR(r RResult) RResult {
+func InverseR(r RResult) RResult {
 	inVec := r.Output()
 	inVecR := r.ROutput()
-	outVec := a.Cache.Alloc(len(inVec))
-	outVecR := a.Cache.Alloc(len(inVec))
-	squaredOut := a.Cache.Alloc(len(inVec))
+	outVec := make(linalg.Vector, len(inVec))
+	outVecR := make(linalg.Vector, len(inVec))
+	squaredOut := make(linalg.Vector, len(inVec))
 	for i, x := range inVec {
 		recip := 1 / x
 		squared := recip * recip
@@ -832,17 +588,11 @@ func (a *Arithmetic) InverseR(r RResult) RResult {
 		outVecR[i] = -squared * inVecR[i]
 	}
 	return &rresultInverse{
-		Cache:      a.Cache,
 		OutputVec:  outVec,
 		ROutputVec: outVecR,
 		SquaredOut: squaredOut,
 		Input:      r,
 	}
-}
-
-// InverseR is equivalent to DefaultArithmetic.InverseR.
-func InverseR(r RResult) RResult {
-	return DefaultArithmetic.InverseR(r)
 }
 
 func (r *rresultInverse) Output() linalg.Vector {
@@ -873,41 +623,24 @@ func (r *rresultInverse) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 }
 
-func (r *rresultInverse) Release() {
-	r.Cache.Free(r.OutputVec)
-	r.Cache.Free(r.ROutputVec)
-	r.Cache.Free(r.SquaredOut)
-	r.OutputVec = nil
-	r.ROutputVec = nil
-	r.SquaredOut = nil
-	r.Input.Release()
-}
-
 type resultPow struct {
-	Cache     *VectorCache
 	OutputVec linalg.Vector
 	Power     float64
 	Input     Result
 }
 
 // Pow raises each component of r to a given power.
-func (a *Arithmetic) Pow(r Result, pow float64) Result {
+func Pow(r Result, pow float64) Result {
 	input := r.Output()
-	output := a.Cache.Alloc(len(input))
+	output := make(linalg.Vector, len(input))
 	for i, x := range input {
 		output[i] = math.Pow(x, pow)
 	}
 	return &resultPow{
-		Cache:     a.Cache,
 		OutputVec: output,
 		Power:     pow,
 		Input:     r,
 	}
-}
-
-// Pow is equivalent to DefaultArithmetic.Pow.
-func Pow(r Result, pow float64) Result {
-	return DefaultArithmetic.Pow(r, pow)
 }
 
 func (r *resultPow) Output() linalg.Vector {
@@ -929,14 +662,7 @@ func (r *resultPow) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	}
 }
 
-func (r *resultPow) Release() {
-	r.Cache.Free(r.OutputVec)
-	r.OutputVec = nil
-	r.Input.Release()
-}
-
 type rresultPow struct {
-	Cache      *VectorCache
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	Power      float64
@@ -944,11 +670,11 @@ type rresultPow struct {
 }
 
 // PowR is like Pow, but for RResults.
-func (a *Arithmetic) PowR(r RResult, pow float64) RResult {
+func PowR(r RResult, pow float64) RResult {
 	input := r.Output()
 	inputR := r.ROutput()
-	output := a.Cache.Alloc(len(input))
-	outputR := a.Cache.Alloc(len(input))
+	output := make(linalg.Vector, len(input))
+	outputR := make(linalg.Vector, len(input))
 	for i, x := range input {
 		output[i] = math.Pow(x, pow)
 	}
@@ -959,17 +685,11 @@ func (a *Arithmetic) PowR(r RResult, pow float64) RResult {
 		}
 	}
 	return &rresultPow{
-		Cache:      a.Cache,
 		OutputVec:  output,
 		ROutputVec: outputR,
 		Power:      pow,
 		Input:      r,
 	}
-}
-
-// PowR is equivalent to DefaultArithmetic.PowR.
-func PowR(r RResult, pow float64) RResult {
-	return DefaultArithmetic.PowR(r, pow)
 }
 
 func (r *rresultPow) Output() linalg.Vector {
@@ -1002,16 +722,7 @@ func (r *rresultPow) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 }
 
-func (r *rresultPow) Release() {
-	r.Cache.Free(r.OutputVec)
-	r.Cache.Free(r.ROutputVec)
-	r.OutputVec = nil
-	r.ROutputVec = nil
-	r.Input.Release()
-}
-
 type sumAllResult struct {
-	Cache     *VectorCache
 	OutputVec linalg.Vector
 	Input     Result
 }
@@ -1019,21 +730,15 @@ type sumAllResult struct {
 // SumAll adds up all the components of r and
 // returns a vector with that sum as its one
 // and only element.
-func (a *Arithmetic) SumAll(r Result) Result {
+func SumAll(r Result) Result {
 	var sum float64
 	for _, x := range r.Output() {
 		sum += x
 	}
 	return &sumAllResult{
-		Cache:     a.Cache,
 		OutputVec: linalg.Vector{sum},
 		Input:     r,
 	}
-}
-
-// SumAll is equivalent to DefaultArithmetic.SumAll.
-func SumAll(r Result) Result {
-	return DefaultArithmetic.SumAll(r)
 }
 
 func (s *sumAllResult) Output() linalg.Vector {
@@ -1047,28 +752,22 @@ func (s *sumAllResult) Constant(g Gradient) bool {
 func (s *sumAllResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	if !s.Input.Constant(grad) {
 		inLen := len(s.Input.Output())
-		downstream := s.Cache.Alloc(inLen)
+		downstream := make(linalg.Vector, inLen)
 		for i := range downstream {
 			downstream[i] = upstream[0]
 		}
 		s.Input.PropagateGradient(downstream, grad)
-		s.Cache.Free(downstream)
 	}
 }
 
-func (s *sumAllResult) Release() {
-	s.Input.Release()
-}
-
 type sumAllRResult struct {
-	Cache      *VectorCache
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	Input      RResult
 }
 
 // SumAllR is like SumAll, but for an RResult.
-func (a *Arithmetic) SumAllR(r RResult) RResult {
+func SumAllR(r RResult) RResult {
 	var sum, rsum float64
 	routput := r.ROutput()
 	for i, x := range r.Output() {
@@ -1076,16 +775,10 @@ func (a *Arithmetic) SumAllR(r RResult) RResult {
 		rsum += routput[i]
 	}
 	return &sumAllRResult{
-		Cache:      a.Cache,
 		OutputVec:  linalg.Vector{sum},
 		ROutputVec: linalg.Vector{rsum},
 		Input:      r,
 	}
-}
-
-// SumAllR is equivalent to DefaultArithmetic.SumAllR.
-func SumAllR(r RResult) RResult {
-	return DefaultArithmetic.SumAllR(r)
 }
 
 func (s *sumAllRResult) Output() linalg.Vector {
@@ -1104,18 +797,12 @@ func (s *sumAllRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	if !s.Input.Constant(rgrad, grad) {
 		inLen := len(s.Input.Output())
-		downstream := s.Cache.Alloc(inLen)
-		downstreamR := s.Cache.Alloc(inLen)
+		downstream := make(linalg.Vector, inLen)
+		downstreamR := make(linalg.Vector, inLen)
 		for i := range downstream {
 			downstream[i] = upstream[0]
 			downstreamR[i] = upstreamR[0]
 		}
 		s.Input.PropagateRGradient(downstream, downstreamR, rgrad, grad)
-		s.Cache.Free(downstream)
-		s.Cache.Free(downstreamR)
 	}
-}
-
-func (s *sumAllRResult) Release() {
-	s.Input.Release()
 }

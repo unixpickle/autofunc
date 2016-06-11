@@ -16,8 +16,6 @@ type LinTran struct {
 	Data *Variable
 	Rows int
 	Cols int
-
-	Cache *VectorCache
 }
 
 // Apply performs matrix multiplication (i.e. m*in).
@@ -33,7 +31,7 @@ func (l *LinTran) ApplyR(v RVector, in RResult) RResult {
 	if len(in.Output()) != l.Cols {
 		panic("input length is invalid")
 	}
-	rData := NewRVariableCache(l.Data, v, l.Cache)
+	rData := NewRVariable(l.Data, v)
 	return &linTranRResult{
 		Matrix:     l,
 		OutputVec:  l.multiply(in.Output()),
@@ -56,16 +54,13 @@ func (l *LinTran) Batch(in Result, n int) Result {
 // BatchR performs matrix multiplication on all
 // of the input vectors.
 func (l *LinTran) BatchR(v RVector, in RResult, n int) RResult {
-	b := RFuncBatcher{
-		F:     l,
-		Cache: l.Cache,
-	}
+	b := RFuncBatcher{F: l}
 	return b.BatchR(v, in, n)
 }
 
 func (l *LinTran) multiply(vec linalg.Vector) linalg.Vector {
 	n := len(vec) / l.Cols
-	res := l.Cache.Alloc(l.Rows * n)
+	res := make(linalg.Vector, l.Rows*n)
 
 	mat := blas64.General{
 		Rows:   l.Rows,
@@ -108,7 +103,7 @@ func (l *LinTran) multiplyR(rData *RVariable, rVec RResult) linalg.Vector {
 	vecR := rVec.ROutput()
 
 	n := len(vec) / l.Cols
-	res := l.Cache.Alloc(l.Rows * n)
+	res := make(linalg.Vector, l.Rows*n)
 
 	mat := blas64.General{
 		Rows:   l.Rows,
@@ -260,7 +255,7 @@ func (l *LinTran) inputGradient(upstream linalg.Vector) linalg.Vector {
 	n := len(upstream) / l.Rows
 
 	matData := l.Data.Output()
-	gradVal := l.Cache.Alloc(l.Cols * n)
+	gradVal := make(linalg.Vector, l.Cols*n)
 
 	matrix := blas64.General{
 		Rows:   l.Rows,
@@ -298,7 +293,7 @@ func (l *LinTran) inputGradientR(rData *RVariable, upstream,
 
 	matData := rData.Output()
 	matDataR := rData.ROutput()
-	gradVal := l.Cache.Alloc(l.Cols * n)
+	gradVal := make(linalg.Vector, l.Cols*n)
 
 	matrix := blas64.General{
 		Rows:   l.Rows,
@@ -365,18 +360,11 @@ func (l *linTranResult) PropagateGradient(upstream linalg.Vector, grad Gradient)
 	if !l.Input.Constant(grad) {
 		gradVal := l.Matrix.inputGradient(upstream)
 		l.Input.PropagateGradient(gradVal, grad)
-		l.Matrix.Cache.Free(gradVal)
 	}
 }
 
 func (l *linTranResult) Constant(g Gradient) bool {
 	return l.Matrix.Data.Constant(g) && l.Input.Constant(g)
-}
-
-func (l *linTranResult) Release() {
-	l.Matrix.Cache.Free(l.OutputVec)
-	l.OutputVec = nil
-	l.Input.Release()
 }
 
 type linTranRResult struct {
@@ -414,19 +402,6 @@ func (l *linTranRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	if !l.Input.Constant(rgrad, grad) {
 		downstreamRVec := l.Matrix.inputGradientR(l.RData, upstream, upstreamR)
 		downstreamVec := l.Matrix.inputGradient(upstream)
-
 		l.Input.PropagateRGradient(downstreamVec, downstreamRVec, rgrad, grad)
-
-		l.Matrix.Cache.Free(downstreamRVec)
-		l.Matrix.Cache.Free(downstreamVec)
 	}
-}
-
-func (l *linTranRResult) Release() {
-	l.Matrix.Cache.Free(l.OutputVec)
-	l.Matrix.Cache.Free(l.ROutputVec)
-	l.OutputVec = nil
-	l.ROutputVec = nil
-	l.Input.Release()
-	l.RData.Release()
 }

@@ -98,7 +98,7 @@ func TestSoftmaxGradient(t *testing.T) {
 		Input: mathFuncTestVec,
 	}
 	funcTest.Run(t)
-	funcTest.F = ComposedFunc{&Softmax{3, nil}, AddTwice{}}
+	funcTest.F = ComposedFunc{&Softmax{3}, AddTwice{}}
 	funcTest.Run(t)
 }
 
@@ -110,7 +110,7 @@ func TestSoftmaxRGradient(t *testing.T) {
 		RV:    mathFuncTestRVec,
 	}
 	funcTest.Run(t)
-	funcTest.F = ComposedRFunc{&Softmax{3, nil}, AddTwice{}}
+	funcTest.F = ComposedRFunc{&Softmax{3}, AddTwice{}}
 	funcTest.Run(t)
 }
 
@@ -129,7 +129,6 @@ func BenchmarkSoftmaxTemp(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		res := s.Apply(inputVar)
 		res.PropagateGradient(inputVec, bogusGrad)
-		res.Release()
 	}
 }
 
@@ -148,6 +147,5 @@ func BenchmarkSoftmaxNoTemp(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		res := s.Apply(inputVar)
 		res.PropagateGradient(inputVec, bogusGrad)
-		res.Release()
 	}
 }

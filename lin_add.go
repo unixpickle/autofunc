@@ -6,19 +6,16 @@ import "github.com/unixpickle/num-analysis/linalg"
 // a vector to its input.
 type LinAdd struct {
 	Var *Variable
-
-	Cache *VectorCache
 }
 
 // Apply applies the addition operation to
 // the input.
 func (l LinAdd) Apply(in Result) Result {
-	outVec := l.Cache.Alloc(len(l.Var.Vector))
+	outVec := make(linalg.Vector, len(l.Var.Vector))
 	for i, x := range in.Output() {
 		outVec[i] = x + l.Var.Vector[i]
 	}
 	return &linAddResult{
-		Cache:     l.Cache,
 		OutputVec: outVec,
 		SumVar:    l.Var,
 		Input:     in,
@@ -27,15 +24,15 @@ func (l LinAdd) Apply(in Result) Result {
 
 // ApplyR is like Apply but for RResults.
 func (l LinAdd) ApplyR(v RVector, in RResult) RResult {
-	rVar := NewRVariableCache(l.Var, v, l.Cache)
+	rVar := NewRVariable(l.Var, v)
 
 	value1 := rVar.Output()
 	value2 := in.Output()
 	value1R := rVar.ROutput()
 	value2R := in.ROutput()
 
-	sum := l.Cache.Alloc(len(value1))
-	sumR := l.Cache.Alloc(len(value1))
+	sum := make(linalg.Vector, len(value1))
+	sumR := make(linalg.Vector, len(value1))
 
 	for i, x := range value1 {
 		sum[i] = x + value2[i]
@@ -45,7 +42,6 @@ func (l LinAdd) ApplyR(v RVector, in RResult) RResult {
 	}
 
 	return &linAddRResult{
-		Cache:      l.Cache,
 		OutputVec:  sum,
 		ROutputVec: sumR,
 		SumVar:     rVar,
@@ -54,7 +50,6 @@ func (l LinAdd) ApplyR(v RVector, in RResult) RResult {
 }
 
 type linAddResult struct {
-	Cache     *VectorCache
 	OutputVec linalg.Vector
 	SumVar    *Variable
 	Input     Result
@@ -77,14 +72,7 @@ func (l *linAddResult) PropagateGradient(upstream linalg.Vector, grad Gradient) 
 	}
 }
 
-func (l *linAddResult) Release() {
-	l.Cache.Free(l.OutputVec)
-	l.OutputVec = nil
-	l.Input.Release()
-}
-
 type linAddRResult struct {
-	Cache      *VectorCache
 	OutputVec  linalg.Vector
 	ROutputVec linalg.Vector
 	SumVar     *RVariable
@@ -118,13 +106,4 @@ func (l *linAddRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	if !l.Input.Constant(rgrad, grad) {
 		l.Input.PropagateRGradient(upstream, upstreamR, rgrad, grad)
 	}
-}
-
-func (l *linAddRResult) Release() {
-	l.Cache.Free(l.OutputVec)
-	l.Cache.Free(l.ROutputVec)
-	l.OutputVec = nil
-	l.ROutputVec = nil
-	l.SumVar.Release()
-	l.Input.Release()
 }

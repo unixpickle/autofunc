@@ -33,8 +33,6 @@ type RBatcher interface {
 // and outputs respectively.
 type FuncBatcher struct {
 	F Func
-
-	Cache *VectorCache
 }
 
 func (f *FuncBatcher) Batch(in Result, n int) Result {
@@ -48,22 +46,20 @@ func (f *FuncBatcher) Batch(in Result, n int) Result {
 		results := make([]Result, n)
 		for i := range results {
 			startIdx := i * sampleLen
-			slicedIn := SliceCache(f.Cache, in, startIdx, startIdx+sampleLen)
+			slicedIn := Slice(in, startIdx, startIdx+sampleLen)
 			results[i] = f.F.Apply(slicedIn)
 		}
-		return ConcatCache(f.Cache, results...)
+		return Concat(results...)
 	})
 }
 
 // An RFuncBatcher is like a FuncBatcher, but for RFuncs.
 type RFuncBatcher struct {
 	F RFunc
-
-	Cache *VectorCache
 }
 
 func (f *RFuncBatcher) Batch(in Result, n int) Result {
-	b := FuncBatcher{F: f.F, Cache: f.Cache}
+	b := FuncBatcher{F: f.F}
 	return b.Batch(in, n)
 }
 
@@ -78,10 +74,10 @@ func (f *RFuncBatcher) BatchR(v RVector, in RResult, n int) RResult {
 		results := make([]RResult, n)
 		for i := range results {
 			startIdx := i * sampleLen
-			slicedIn := SliceCacheR(f.Cache, in, startIdx, startIdx+sampleLen)
+			slicedIn := SliceR(in, startIdx, startIdx+sampleLen)
 			results[i] = f.F.ApplyR(v, slicedIn)
 		}
-		return ConcatCacheR(f.Cache, results...)
+		return ConcatR(results...)
 	})
 }
 

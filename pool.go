@@ -73,11 +73,6 @@ func (p *pooledResult) PropagateGradient(upstream linalg.Vector, grad Gradient) 
 	}
 }
 
-func (p *pooledResult) Release() {
-	p.FOutput.Release()
-	p.Input.Release()
-}
-
 type pooledRResult struct {
 	Input   RResult
 	PoolVar *RVariable
@@ -120,9 +115,4 @@ func (p *pooledRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 		delete(rgrad, p.PoolVar.Variable)
 		p.Input.PropagateRGradient(upsGrad, upsGradR, rgrad, grad)
 	}
-}
-
-func (p *pooledRResult) Release() {
-	p.FOutput.Release()
-	p.Input.Release()
 }

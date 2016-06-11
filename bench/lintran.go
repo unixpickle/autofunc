@@ -46,7 +46,6 @@ func (l *LinTranBenchmark) Run(b *testing.B, backProp bool) {
 		if backProp {
 			res.PropagateGradient(upstream, grad)
 		}
-		res.Release()
 	}
 }
 
@@ -87,6 +86,5 @@ func (l *LinTranBenchmark) RunR(b *testing.B, backProp bool) {
 		if backProp {
 			res.PropagateRGradient(upstream, upstreamR, rgrad, grad)
 		}
-		res.Release()
 	}
 }
