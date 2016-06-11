@@ -91,24 +91,49 @@ func (l *LinTran) multiply(vec linalg.Vector) linalg.Vector {
 }
 
 func (l *LinTran) multiplyR(rData *RVariable, rVec RResult) linalg.Vector {
-	res := l.Cache.Alloc(l.Rows)
-	matData := rData.Output()
-	matDerivs := rData.ROutput()
-	inVec := rVec.Output()
-	inDerivs := rVec.ROutput()
+	vec := rVec.Output()
+	vecR := rVec.ROutput()
 
-	matIdx := 0
-	for i := range res {
-		for j, vecVal := range inVec {
-			vecDeriv := inDerivs[j]
-			res[i] += matData[matIdx]*vecDeriv + matDerivs[matIdx]*vecVal
-			matIdx++
-		}
+	n := len(vec) / l.Cols
+	res := l.Cache.Alloc(l.Rows * n)
+
+	mat := blas64.General{
+		Rows:   l.Rows,
+		Cols:   l.Cols,
+		Stride: l.Cols,
+		Data:   rData.Output(),
 	}
+	matR := blas64.General{
+		Rows:   l.Rows,
+		Cols:   l.Cols,
+		Stride: l.Cols,
+		Data:   rData.ROutput(),
+	}
+	inMat := blas64.General{
+		Rows:   n,
+		Cols:   l.Cols,
+		Stride: l.Cols,
+		Data:   vec,
+	}
+	inMatR := blas64.General{
+		Rows:   n,
+		Cols:   l.Cols,
+		Stride: l.Cols,
+		Data:   vecR,
+	}
+	outMat := blas64.General{
+		Rows:   n,
+		Cols:   l.Rows,
+		Stride: l.Rows,
+		Data:   res,
+	}
+	blas64.Gemm(blas.NoTrans, blas.Trans, 1, inMat, matR, 0, outMat)
+	blas64.Gemm(blas.NoTrans, blas.Trans, 1, inMatR, mat, 1, outMat)
+
 	return res
 }
 
-func (l *LinTran) dataGradient(upstream linalg.Vector, grad Gradient, input linalg.Vector) {
+func (l *LinTran) dataGradient(upstream linalg.Vector, input linalg.Vector, grad Gradient) {
 	n := len(input) / l.Cols
 	gradMat := blas64.General{
 		Data:   grad[l.Data],
@@ -140,6 +165,64 @@ func (l *LinTran) dataGradient(upstream linalg.Vector, grad Gradient, input lina
 			Data:   input,
 		}
 		blas64.Gemm(blas.Trans, blas.NoTrans, 1, partialMat, inputMat, 1, gradMat)
+	}
+}
+
+func (l *LinTran) dataGradientR(upstream, upstreamR linalg.Vector, input, inputR linalg.Vector,
+	rgrad linalg.Vector) {
+	n := len(input) / l.Cols
+	gradMat := blas64.General{
+		Data:   rgrad,
+		Rows:   l.Rows,
+		Cols:   l.Cols,
+		Stride: l.Cols,
+	}
+	if n == 1 {
+		partialVec := blas64.Vector{
+			Data: upstream,
+			Inc:  1,
+		}
+		inputVec := blas64.Vector{
+			Data: input,
+			Inc:  1,
+		}
+		partialVecR := blas64.Vector{
+			Data: upstreamR,
+			Inc:  1,
+		}
+		inputVecR := blas64.Vector{
+			Data: inputR,
+			Inc:  1,
+		}
+		blas64.Ger(1, partialVec, inputVecR, gradMat)
+		blas64.Ger(1, partialVecR, inputVec, gradMat)
+	} else {
+		partialMat := blas64.General{
+			Rows:   n,
+			Cols:   l.Rows,
+			Stride: l.Rows,
+			Data:   upstream,
+		}
+		inputMat := blas64.General{
+			Rows:   n,
+			Cols:   l.Cols,
+			Stride: l.Cols,
+			Data:   input,
+		}
+		partialMatR := blas64.General{
+			Rows:   n,
+			Cols:   l.Rows,
+			Stride: l.Rows,
+			Data:   upstreamR,
+		}
+		inputMatR := blas64.General{
+			Rows:   n,
+			Cols:   l.Cols,
+			Stride: l.Cols,
+			Data:   inputR,
+		}
+		blas64.Gemm(blas.Trans, blas.NoTrans, 1, partialMat, inputMatR, 1, gradMat)
+		blas64.Gemm(blas.Trans, blas.NoTrans, 1, partialMatR, inputMat, 1, gradMat)
 	}
 }
 
@@ -179,6 +262,59 @@ func (l *LinTran) inputGradient(upstream linalg.Vector) linalg.Vector {
 	return gradVal
 }
 
+func (l *LinTran) inputGradientR(rData *RVariable, upstream,
+	upstreamR linalg.Vector) linalg.Vector {
+	n := len(upstream) / l.Rows
+
+	matData := rData.Output()
+	matDataR := rData.ROutput()
+	gradVal := l.Cache.Alloc(l.Cols * n)
+
+	matrix := blas64.General{
+		Rows:   l.Rows,
+		Cols:   l.Cols,
+		Stride: l.Cols,
+		Data:   matData,
+	}
+	matrixR := blas64.General{
+		Rows:   l.Rows,
+		Cols:   l.Cols,
+		Stride: l.Cols,
+		Data:   matDataR,
+	}
+
+	if n == 1 {
+		vectorIn := blas64.Vector{Data: upstream, Inc: 1}
+		vectorInR := blas64.Vector{Data: upstreamR, Inc: 1}
+		vectorOut := blas64.Vector{Data: gradVal, Inc: 1}
+		blas64.Gemv(blas.Trans, 1, matrixR, vectorIn, 0, vectorOut)
+		blas64.Gemv(blas.Trans, 1, matrix, vectorInR, 1, vectorOut)
+	} else {
+		upstreamMat := blas64.General{
+			Rows:   n,
+			Cols:   l.Rows,
+			Stride: l.Rows,
+			Data:   upstream,
+		}
+		upstreamMatR := blas64.General{
+			Rows:   n,
+			Cols:   l.Rows,
+			Stride: l.Rows,
+			Data:   upstreamR,
+		}
+		outputMat := blas64.General{
+			Rows:   n,
+			Cols:   l.Cols,
+			Stride: l.Cols,
+			Data:   gradVal,
+		}
+		blas64.Gemm(blas.NoTrans, blas.NoTrans, 1, upstreamMatR, matrix, 0, outputMat)
+		blas64.Gemm(blas.NoTrans, blas.NoTrans, 1, upstreamMat, matrixR, 1, outputMat)
+	}
+
+	return gradVal
+}
+
 // linTranResult represents the result of applying
 // a LinTran to a Result.
 type linTranResult struct {
@@ -193,7 +329,7 @@ func (l *linTranResult) Output() linalg.Vector {
 
 func (l *linTranResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	if !l.Matrix.Data.Constant(grad) {
-		l.Matrix.dataGradient(upstream, grad, l.Input.Output())
+		l.Matrix.dataGradient(upstream, l.Input.Output(), grad)
 	}
 
 	if !l.Input.Constant(grad) {
@@ -236,36 +372,17 @@ func (l *linTranRResult) Constant(rg RGradient, g Gradient) bool {
 func (l *linTranRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	if grad != nil && !l.Matrix.Data.Constant(grad) {
-		l.Matrix.dataGradient(upstream, grad, l.Input.Output())
+		l.Matrix.dataGradient(upstream, l.Input.Output(), grad)
 	}
 
 	if outGrad, ok := rgrad[l.Matrix.Data]; ok {
-		inputDerivs := l.Input.ROutput()
 		input := l.Input.Output()
-
-		outGradIdx := 0
-		for row, partial := range upstream {
-			partialR := upstreamR[row]
-			for col := 0; col < l.Matrix.Cols; col++ {
-				outGrad[outGradIdx] += input[col]*partialR + inputDerivs[col]*partial
-				outGradIdx++
-			}
-		}
+		inputR := l.Input.ROutput()
+		l.Matrix.dataGradientR(upstream, upstreamR, input, inputR, outGrad)
 	}
 
 	if !l.Input.Constant(rgrad, grad) {
-		dataDerivs := l.RData.ROutput()
-		data := l.RData.Output()
-		dataIdx := 0
-
-		downstreamRVec := l.Matrix.Cache.Alloc(l.Matrix.Cols)
-		for row, partial := range upstream {
-			partialR := upstreamR[row]
-			for col := 0; col < l.Matrix.Cols; col++ {
-				downstreamRVec[col] += partialR*data[dataIdx] + partial*dataDerivs[dataIdx]
-				dataIdx++
-			}
-		}
+		downstreamRVec := l.Matrix.inputGradientR(l.RData, upstream, upstreamR)
 		downstreamVec := l.Matrix.inputGradient(upstream)
 
 		l.Input.PropagateRGradient(downstreamVec, downstreamRVec, rgrad, grad)
