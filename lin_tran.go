@@ -54,8 +54,14 @@ func (l *LinTran) Batch(in Result, n int) Result {
 // BatchR performs matrix multiplication on all
 // of the input vectors.
 func (l *LinTran) BatchR(v RVector, in RResult, n int) RResult {
-	b := RFuncBatcher{F: l}
-	return b.BatchR(v, in, n)
+	rData := NewRVariable(l.Data, v)
+	return &linTranRResult{
+		Matrix:     l,
+		Input:      in,
+		OutputVec:  l.multiply(in.Output()),
+		ROutputVec: l.multiplyR(rData, in),
+		RData:      rData,
+	}
 }
 
 func (l *LinTran) multiply(vec linalg.Vector) linalg.Vector {
