@@ -306,8 +306,10 @@ func (s *Softmax) Apply(in Result) Result {
 		scaledInputs = Scale(in, 1/s.Temperature)
 	}
 	exps := Exp{}.Apply(scaledInputs)
-	sum := SumAll(exps)
-	return ScaleFirst(exps, Inverse(sum))
+	return Pool(exps, func(exps Result) Result {
+		sum := SumAll(exps)
+		return ScaleFirst(exps, Inverse(sum))
+	})
 }
 
 func (s *Softmax) ApplyR(v RVector, in RResult) RResult {
@@ -316,6 +318,8 @@ func (s *Softmax) ApplyR(v RVector, in RResult) RResult {
 		scaledInputs = ScaleR(in, 1/s.Temperature)
 	}
 	exps := Exp{}.ApplyR(v, scaledInputs)
-	sum := SumAllR(exps)
-	return ScaleFirstR(exps, InverseR(sum))
+	return PoolR(exps, func(in RResult) RResult {
+		sum := SumAllR(exps)
+		return ScaleFirstR(exps, InverseR(sum))
+	})
 }
