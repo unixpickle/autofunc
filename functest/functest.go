@@ -66,6 +66,12 @@ func (f *FuncTest) Jacobian() []Gradient {
 
 func (f *FuncTest) Run(t *testing.T) {
 	testFuncGradient(t, f)
+	allVars := f.Vars
+	for _, x := range allVars {
+		f.Vars = []*Variable{x}
+		testFuncGradient(t, f)
+	}
+	f.Vars = allVars
 }
 
 type RFuncTest struct {
@@ -109,7 +115,17 @@ func (f *RFuncTest) Jacobian() []Gradient {
 
 func (f *RFuncTest) Run(t *testing.T) {
 	testFuncGradient(t, f)
+	f.testR(t)
+	allVars := f.Vars
+	for _, x := range allVars {
+		f.Vars = []*Variable{x}
+		testFuncGradient(t, f)
+		f.testR(t)
+	}
+	f.Vars = allVars
+}
 
+func (f *RFuncTest) testR(t *testing.T) {
 	output := f.F.ApplyR(f.RV, f.rInput())
 
 	approxGrads, outGrads := f.approximateR()
