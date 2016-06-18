@@ -47,11 +47,11 @@ func (j *joinedResults) Constant(g Gradient) bool {
 func (j *joinedResults) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	vecIdx := 0
 	for _, x := range j.Results {
+		l := len(x.Output())
 		if !x.Constant(grad) {
-			l := len(x.Output())
 			x.PropagateGradient(upstream[vecIdx:vecIdx+l], grad)
-			vecIdx += l
 		}
+		vecIdx += l
 	}
 }
 
@@ -109,12 +109,12 @@ func (j *joinedRResults) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	vecIdx := 0
 	for _, x := range j.Results {
+		l := len(x.Output())
 		if !x.Constant(rgrad, grad) {
-			l := len(x.Output())
 			x.PropagateRGradient(upstream[vecIdx:vecIdx+l], upstreamR[vecIdx:vecIdx+l],
 				rgrad, grad)
-			vecIdx += l
 		}
+		vecIdx += l
 	}
 }
 
