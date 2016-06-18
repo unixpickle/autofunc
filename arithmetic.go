@@ -361,8 +361,8 @@ type scaleFirstResult struct {
 	Input     Result
 }
 
-// scaleFirstResult scales all the elements of
-// a vector by the first element of a vector.
+// ScaleFirst scales all the elements of a
+// vector by the first element of a vector.
 func ScaleFirst(in Result, scaler Result) Result {
 	f := scaler.Output()[0]
 	return &scaleFirstResult{
@@ -445,6 +445,108 @@ func (s *scaleFirstRResult) PropagateRGradient(upstream, upstreamR linalg.Vector
 		upstreamR.Scale(scaler).Add(upstream.Copy().Scale(scalerR))
 		upstream.Scale(scaler)
 		s.Input.PropagateRGradient(upstream, upstreamR, rgrad, grad)
+	}
+}
+
+type addFirstResult struct {
+	OutputVec linalg.Vector
+	Input     Result
+	Scaler    Result
+}
+
+// AddFirst adds the first element of v2 to each
+// element of v1.
+// This is basically like AddScaler, but instead
+// of a constant, the first element of v2 is used.
+func AddFirst(v1 Result, v2 Result) Result {
+	inVec := v1.Output()
+	outVec := make(linalg.Vector, len(inVec))
+	scaler := v2.Output()[0]
+	for i, x := range inVec {
+		outVec[i] = scaler + x
+	}
+	return &addFirstResult{
+		OutputVec: outVec,
+		Input:     v1,
+		Scaler:    v2,
+	}
+}
+
+func (a *addFirstResult) Output() linalg.Vector {
+	return a.OutputVec
+}
+
+func (a *addFirstResult) Constant(g Gradient) bool {
+	return a.Input.Constant(g) && a.Scaler.Constant(g)
+}
+
+func (a *addFirstResult) PropagateGradient(upstream linalg.Vector, g Gradient) {
+	if !a.Scaler.Constant(g) {
+		scalerUpstream := make(linalg.Vector, len(a.Scaler.Output()))
+		for _, x := range upstream {
+			scalerUpstream[0] += x
+		}
+		a.Scaler.PropagateGradient(scalerUpstream, g)
+	}
+	if !a.Input.Constant(g) {
+		a.Input.PropagateGradient(upstream, g)
+	}
+}
+
+type addFirstRResult struct {
+	OutputVec  linalg.Vector
+	ROutputVec linalg.Vector
+	Input      RResult
+	Scaler     RResult
+}
+
+// AddFirstR is like AddFirst, but for RResults.
+func AddFirstR(v1 RResult, v2 RResult) RResult {
+	inVec := v1.Output()
+	inVecR := v1.ROutput()
+	outVec := make(linalg.Vector, len(inVec))
+	outVecR := make(linalg.Vector, len(inVec))
+	scaler := v2.Output()[0]
+	scalerR := v2.ROutput()[0]
+	for i, x := range inVec {
+		outVec[i] = scaler + x
+	}
+	for i, x := range inVecR {
+		outVecR[i] = scalerR + x
+	}
+	return &addFirstRResult{
+		OutputVec:  outVec,
+		ROutputVec: outVecR,
+		Input:      v1,
+		Scaler:     v2,
+	}
+}
+
+func (a *addFirstRResult) Output() linalg.Vector {
+	return a.OutputVec
+}
+
+func (a *addFirstRResult) ROutput() linalg.Vector {
+	return a.ROutputVec
+}
+
+func (a *addFirstRResult) Constant(rg RGradient, g Gradient) bool {
+	return a.Input.Constant(rg, g) && a.Scaler.Constant(rg, g)
+}
+
+func (a *addFirstRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+	rg RGradient, g Gradient) {
+	if !a.Scaler.Constant(rg, g) {
+		scalerUpstream := make(linalg.Vector, len(a.Scaler.Output()))
+		scalerUpstreamR := make(linalg.Vector, len(a.Scaler.Output()))
+		for i, x := range upstream {
+			scalerUpstream[0] += x
+			scalerUpstreamR[0] += upstreamR[i]
+		}
+		a.Scaler.PropagateRGradient(scalerUpstream, scalerUpstreamR, rg, g)
+	}
+	if !a.Input.Constant(rg, g) {
+		a.Input.PropagateRGradient(upstream, upstreamR, rg, g)
 	}
 }
 
