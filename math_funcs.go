@@ -290,6 +290,107 @@ func (s *sigmoidRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	s.Input.PropagateRGradient(upstream, upstreamR, rgrad, grad)
 }
 
+// LogSigmoid is a Func and RFunc which computes the
+// logarithm of the logistic sigmoid function,
+// i.e. ln(1/(1+exp(-x))).
+// This is more numerically reliable than taking the
+// log of the sigmoid in two steps.
+type LogSigmoid struct{}
+
+func (l LogSigmoid) Apply(in Result) Result {
+	return &logSigmoidResult{
+		OutputVec: l.logSigmoid(in.Output()),
+		Input:     in,
+	}
+}
+
+func (l LogSigmoid) ApplyR(v RVector, in RResult) RResult {
+	inVec := in.Output()
+	return &logSigmoidRResult{
+		OutputVec:  l.logSigmoid(inVec),
+		ROutputVec: l.logSigmoidR(inVec, in.ROutput()),
+		Input:      in,
+	}
+}
+
+func (l LogSigmoid) logSigmoid(inVec linalg.Vector) linalg.Vector {
+	res := make(linalg.Vector, len(inVec))
+	for i, x := range inVec {
+		// Avoid taking the log of a big number.
+		if x > 0 {
+			res[i] = -math.Log(1 + math.Exp(-x))
+		} else {
+			res[i] = x - math.Log(1+math.Exp(x))
+		}
+	}
+	return res
+}
+
+func (l LogSigmoid) logSigmoidR(inVec, inVecR linalg.Vector) linalg.Vector {
+	res := make(linalg.Vector, len(inVec))
+	for i, x := range inVec {
+		res[i] = inVecR[i] / (1 + math.Exp(x))
+	}
+	return res
+}
+
+type logSigmoidResult struct {
+	OutputVec linalg.Vector
+	Input     Result
+}
+
+func (l *logSigmoidResult) Output() linalg.Vector {
+	return l.OutputVec
+}
+
+func (l *logSigmoidResult) Constant(g Gradient) bool {
+	return l.Input.Constant(g)
+}
+
+func (l *logSigmoidResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
+	if !l.Input.Constant(grad) {
+		for i, x := range l.Input.Output() {
+			upstream[i] /= (1 + math.Exp(x))
+		}
+		l.Input.PropagateGradient(upstream, grad)
+	}
+}
+
+type logSigmoidRResult struct {
+	OutputVec  linalg.Vector
+	ROutputVec linalg.Vector
+	Input      RResult
+}
+
+func (l *logSigmoidRResult) Output() linalg.Vector {
+	return l.OutputVec
+}
+
+func (l *logSigmoidRResult) ROutput() linalg.Vector {
+	return l.ROutputVec
+}
+
+func (l *logSigmoidRResult) Constant(rg RGradient, g Gradient) bool {
+	return l.Input.Constant(rg, g)
+}
+
+func (l *logSigmoidRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+	rgrad RGradient, grad Gradient) {
+	if !l.Input.Constant(rgrad, grad) {
+		rInput := l.Input.ROutput()
+		for i, x := range l.Input.Output() {
+			xR := rInput[i]
+			uR := upstreamR[i]
+			u := upstream[i]
+			expX := math.Exp(x)
+			sigmoid := 1 / (1 + expX)
+			upstream[i] = u * sigmoid
+			upstreamR[i] = uR*sigmoid - u*sigmoid*sigmoid*expX*xR
+		}
+		l.Input.PropagateRGradient(upstream, upstreamR, rgrad, grad)
+	}
+}
+
 // Softmax is a Func and RFunc which evaluates the
 // softmax function with a given temperature.
 type Softmax struct {

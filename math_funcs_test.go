@@ -91,6 +91,25 @@ func TestSigmoidRGradient(t *testing.T) {
 	funcTest.Run(t)
 }
 
+func TestLogSigmoidGradient(t *testing.T) {
+	funcTest := &FuncTest{
+		F:     ComposedFunc{LogSigmoid{}, LogSigmoid{}, LogSigmoid{}, AddTwice{}},
+		Vars:  mathFuncTestVars,
+		Input: mathFuncTestVec,
+	}
+	funcTest.Run(t)
+}
+
+func TestLogSigmoidRGradient(t *testing.T) {
+	funcTest := &RFuncTest{
+		F:     ComposedRFunc{LogSigmoid{}, LogSigmoid{}, LogSigmoid{}, AddTwice{}},
+		Vars:  mathFuncTestVars,
+		Input: mathFuncTestVec,
+		RV:    mathFuncTestRVec,
+	}
+	funcTest.Run(t)
+}
+
 func TestSoftmaxGradient(t *testing.T) {
 	funcTest := &FuncTest{
 		F:     ComposedFunc{&Softmax{}, AddTwice{}},
