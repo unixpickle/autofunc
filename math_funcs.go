@@ -424,3 +424,101 @@ func (s *Softmax) ApplyR(v RVector, in RResult) RResult {
 		return ScaleFirstR(exps, InverseR(sum))
 	})
 }
+
+// Sin is a Func and RFunc which evaluates the sine
+// (in radians) of each of its input components.
+type Sin struct{}
+
+func (_ Sin) Apply(in Result) Result {
+	input := in.Output()
+	res := make(linalg.Vector, len(input))
+	for i, x := range input {
+		res[i] = math.Sin(x)
+	}
+	return &sinResult{
+		OutputVec: res,
+		Input:     in,
+	}
+}
+
+func (_ Sin) ApplyR(v RVector, in RResult) RResult {
+	input := in.Output()
+	inputR := in.ROutput()
+	res := make(linalg.Vector, len(input))
+	resR := make(linalg.Vector, len(inputR))
+	for i, x := range input {
+		res[i] = math.Sin(x)
+		resR[i] = math.Cos(x) * inputR[i]
+	}
+	return &sinRResult{
+		OutputVec:  res,
+		ROutputVec: resR,
+		Input:      in,
+	}
+}
+
+type sinResult struct {
+	OutputVec linalg.Vector
+	Input     Result
+}
+
+func (s *sinResult) Output() linalg.Vector {
+	return s.OutputVec
+}
+
+func (s *sinResult) Constant(g Gradient) bool {
+	return s.Input.Constant(g)
+}
+
+func (s *sinResult) PropagateGradient(upstream linalg.Vector, g Gradient) {
+	if !s.Input.Constant(g) {
+		for i, input := range s.Input.Output() {
+			upstream[i] *= math.Cos(input)
+		}
+		s.Input.PropagateGradient(upstream, g)
+	}
+}
+
+type sinRResult struct {
+	OutputVec  linalg.Vector
+	ROutputVec linalg.Vector
+	Input      RResult
+}
+
+func (s *sinRResult) Output() linalg.Vector {
+	return s.OutputVec
+}
+
+func (s *sinRResult) ROutput() linalg.Vector {
+	return s.ROutputVec
+}
+
+func (s *sinRResult) Constant(rg RGradient, g Gradient) bool {
+	return s.Input.Constant(rg, g)
+}
+
+func (s *sinRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
+	rg RGradient, g Gradient) {
+	if !s.Input.Constant(rg, g) {
+		rIn := s.Input.ROutput()
+		for i, input := range s.Input.Output() {
+			cosIn := math.Cos(input)
+			cosDeriv := -s.OutputVec[i] * rIn[i]
+			upstreamR[i] = upstreamR[i]*cosIn + upstream[i]*cosDeriv
+			upstream[i] *= cosIn
+		}
+		s.Input.PropagateRGradient(upstream, upstreamR, rg, g)
+	}
+}
+
+// Cos is a Func and RFunc which evaluates the cosine
+// (in radians) of all its input's components.
+type Cos struct{}
+
+func (_ Cos) Apply(in Result) Result {
+	return Sin{}.Apply(AddScaler(in, -math.Pi/2))
+}
+
+func (_ Cos) ApplyR(v RVector, in RResult) RResult {
+	return Sin{}.ApplyR(v, AddScalerR(in, -math.Pi/2))
+}

@@ -133,6 +133,29 @@ func TestSoftmaxRGradient(t *testing.T) {
 	funcTest.Run(t)
 }
 
+func TestSinGradient(t *testing.T) {
+	funcTest := &FuncTest{
+		F:     Sin{},
+		Vars:  mathFuncTestVars,
+		Input: mathFuncTestVec,
+	}
+	funcTest.Run(t)
+	funcTest.F = ComposedFunc{Sin{}, AddTwice{}}
+	funcTest.Run(t)
+}
+
+func TestSinRGradient(t *testing.T) {
+	funcTest := &RFuncTest{
+		F:     Sin{},
+		Vars:  mathFuncTestVars,
+		Input: mathFuncTestVec,
+		RV:    mathFuncTestRVec,
+	}
+	funcTest.Run(t)
+	funcTest.F = ComposedRFunc{Sin{}, AddTwice{}}
+	funcTest.Run(t)
+}
+
 func BenchmarkSoftmaxTemp(b *testing.B) {
 	rand.Seed(123)
 	inputVec := make(linalg.Vector, 3000)
