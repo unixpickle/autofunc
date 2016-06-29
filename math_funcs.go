@@ -516,9 +516,9 @@ func (s *sinRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 type Cos struct{}
 
 func (_ Cos) Apply(in Result) Result {
-	return Sin{}.Apply(AddScaler(in, -math.Pi/2))
+	return Sin{}.Apply(AddScaler(in, math.Pi/2))
 }
 
 func (_ Cos) ApplyR(v RVector, in RResult) RResult {
-	return Sin{}.ApplyR(v, AddScalerR(in, -math.Pi/2))
+	return Sin{}.ApplyR(v, AddScalerR(in, math.Pi/2))
 }

@@ -1,6 +1,7 @@
 package autofunc
 
 import (
+	"math"
 	"math/rand"
 	"testing"
 
@@ -154,6 +155,17 @@ func TestSinRGradient(t *testing.T) {
 	funcTest.Run(t)
 	funcTest.F = ComposedRFunc{Sin{}, AddTwice{}}
 	funcTest.Run(t)
+}
+
+func TestCosOutput(t *testing.T) {
+	cosFunc := Cos{}
+	for i := 0; i < 10; i++ {
+		arg := rand.Float64()*20 - 10
+		output := cosFunc.Apply(&Variable{Vector: []float64{arg}}).Output()[0]
+		if math.Abs(output-math.Cos(arg)) > 1e-5 {
+			t.Error("argument", arg, "gave", output, "but expected", math.Cos(arg))
+		}
+	}
 }
 
 func BenchmarkSoftmaxTemp(b *testing.B) {
