@@ -227,7 +227,10 @@ func testFuncGradient(t *testing.T, f GradientTest) {
 			for outputIdx, grad := range jacobian {
 				actual := grad[variable][elementIdx]
 				expected := approxVec[outputIdx]
-				if math.Abs(actual-expected) > funcTestPrec {
+				if math.IsNaN(actual) {
+					t.Errorf("var %d, output %d, entry %d: expected %f got %f",
+						varIdx, outputIdx, elementIdx, expected, actual)
+				} else if math.Abs(actual-expected) > funcTestPrec {
 					t.Errorf("var %d, output %d, entry %d: expected %f got %f",
 						varIdx, outputIdx, elementIdx, expected, actual)
 				}
