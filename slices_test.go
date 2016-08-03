@@ -64,19 +64,27 @@ func TestConcatRGradients(t *testing.T) {
 	f.Run(t)
 }
 
-type sliceTestFunc struct{}
+type sliceTestFunc struct {
+	WrapInput bool
+}
 
-func (_ sliceTestFunc) Apply(r Result) Result {
+func (s *sliceTestFunc) Apply(r Result) Result {
+	if s.WrapInput {
+		r = Add(r, Scale(r, 0))
+	}
 	return Slice(r, 1, 3)
 }
 
-func (_ sliceTestFunc) ApplyR(v RVector, r RResult) RResult {
+func (s *sliceTestFunc) ApplyR(v RVector, r RResult) RResult {
+	if s.WrapInput {
+		r = AddR(r, ScaleR(r, 0))
+	}
 	return SliceR(r, 1, 3)
 }
 
 func TestSliceGradients(t *testing.T) {
 	f := &FuncTest{
-		F:     sliceTestFunc{},
+		F:     &sliceTestFunc{},
 		Vars:  slicesTestVars,
 		Input: slicesTestVec1,
 	}
@@ -85,7 +93,26 @@ func TestSliceGradients(t *testing.T) {
 
 func TestSliceRGradients(t *testing.T) {
 	f := &RFuncTest{
-		F:     sliceTestFunc{},
+		F:     &sliceTestFunc{},
+		Vars:  slicesTestVars,
+		Input: slicesTestVec1,
+		RV:    slicesTestRVec,
+	}
+	f.Run(t)
+}
+
+func TestWrappedSliceGradients(t *testing.T) {
+	f := &FuncTest{
+		F:     &sliceTestFunc{WrapInput: true},
+		Vars:  slicesTestVars,
+		Input: slicesTestVec1,
+	}
+	f.Run(t)
+}
+
+func TestWrappedSliceRGradients(t *testing.T) {
+	f := &RFuncTest{
+		F:     &sliceTestFunc{WrapInput: true},
 		Vars:  slicesTestVars,
 		Input: slicesTestVec1,
 		RV:    slicesTestRVec,

@@ -145,9 +145,14 @@ func (s *slicedResult) Constant(g Gradient) bool {
 
 func (s *slicedResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 	if !s.Input.Constant(grad) {
-		downstream := make(linalg.Vector, len(s.Input.Output()))
-		copy(downstream[s.StartIdx:], upstream)
-		s.Input.PropagateGradient(downstream, grad)
+		if variable, ok := s.Input.(*Variable); ok {
+			sumGradVec := grad[variable]
+			sumGradVec[s.StartIdx:s.EndIdx].Add(upstream)
+		} else {
+			downstream := make(linalg.Vector, len(s.Input.Output()))
+			copy(downstream[s.StartIdx:], upstream)
+			s.Input.PropagateGradient(downstream, grad)
+		}
 	}
 }
 
@@ -181,10 +186,21 @@ func (s *slicedRResult) Constant(rg RGradient, g Gradient) bool {
 func (s *slicedRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	rgrad RGradient, grad Gradient) {
 	if !s.Input.Constant(rgrad, grad) {
-		downstream := make(linalg.Vector, len(s.Input.Output()))
-		downstreamR := make(linalg.Vector, len(s.Input.Output()))
-		copy(downstream[s.StartIdx:], upstream)
-		copy(downstreamR[s.StartIdx:], upstreamR)
-		s.Input.PropagateRGradient(downstream, downstreamR, rgrad, grad)
+		if rVariable, ok := s.Input.(*RVariable); ok {
+			gradVec := grad[rVariable.Variable]
+			if gradVec != nil {
+				gradVec[s.StartIdx:s.EndIdx].Add(upstream)
+			}
+			rgradVec := rgrad[rVariable.Variable]
+			if rgradVec != nil {
+				rgradVec[s.StartIdx:s.EndIdx].Add(upstreamR)
+			}
+		} else {
+			downstream := make(linalg.Vector, len(s.Input.Output()))
+			downstreamR := make(linalg.Vector, len(s.Input.Output()))
+			copy(downstream[s.StartIdx:], upstream)
+			copy(downstreamR[s.StartIdx:], upstreamR)
+			s.Input.PropagateRGradient(downstream, downstreamR, rgrad, grad)
+		}
 	}
 }
