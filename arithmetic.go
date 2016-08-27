@@ -908,3 +908,28 @@ func (s *sumAllRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 		s.Input.PropagateRGradient(downstream, downstreamR, rgrad, grad)
 	}
 }
+
+// AddLogDomain adds values which are expressed as natural
+// logarithms of their actual values.
+// In other words, it is like exponentiating the elements
+// of v1 and v2, adding them together, and then taking the
+// natural log of the result.
+// However, the above procedure is vulnerable to overflow
+// issues, whereas AddLogDomain is not.
+func AddLogDomain(v1, v2 Result) Result {
+	maxVal := math.Max(v1.Output().MaxAbs(), v2.Output().MaxAbs())
+	exp1 := Exp{}.Apply(AddScaler(v1, -maxVal))
+	exp2 := Exp{}.Apply(AddScaler(v2, -maxVal))
+	expSum := Add(exp1, exp2)
+	return AddScaler(Log{}.Apply(expSum), maxVal)
+}
+
+// AddLogDomainR is like AddLogDomain, but for RResults.
+func AddLogDomainR(v1, v2 RResult) RResult {
+	rv := RVector{}
+	maxVal := math.Max(v1.Output().MaxAbs(), v2.Output().MaxAbs())
+	exp1 := Exp{}.ApplyR(rv, AddScalerR(v1, -maxVal))
+	exp2 := Exp{}.ApplyR(rv, AddScalerR(v2, -maxVal))
+	expSum := AddR(exp1, exp2)
+	return AddScalerR(Log{}.ApplyR(rv, expSum), maxVal)
+}

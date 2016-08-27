@@ -1,6 +1,7 @@
 package autofunc
 
 import (
+	"math"
 	"testing"
 
 	"github.com/unixpickle/num-analysis/linalg"
@@ -46,7 +47,7 @@ func (_ arithmeticTestFunc) Apply(r Result) Result {
 	sum1 := AddScaler(Add(Mul(sq1, arithmeticTestVec3), Scale(arithmeticTestVec4, -0.5)), 2)
 	powed := Pow(Pow(Inverse(sum1), 2), 1/3.0)
 	allSum := SumAll(AddFirst(powed, arithmeticTestVec1))
-	return ScaleFirst(arithmeticTestVec1, allSum)
+	return ScaleFirst(AddLogDomain(arithmeticTestVec1, arithmeticTestVec2), allSum)
 }
 
 func (_ arithmeticTestFunc) ApplyR(v RVector, r RResult) RResult {
@@ -58,7 +59,7 @@ func (_ arithmeticTestFunc) ApplyR(v RVector, r RResult) RResult {
 	sum1 := AddScalerR(AddR(MulR(sq1, rVec3), ScaleR(rVec4, -0.5)), 2)
 	powed := PowR(PowR(InverseR(sum1), 2), 1/3.0)
 	allSum := SumAllR(AddFirstR(powed, rVec1))
-	return ScaleFirstR(rVec1, allSum)
+	return ScaleFirstR(AddLogDomainR(rVec1, rVec2), allSum)
 }
 
 func TestArithmeticGradients(t *testing.T) {
@@ -78,4 +79,21 @@ func TestArithmeticRGradients(t *testing.T) {
 		RV:    arithmeticTestRVec,
 	}
 	f.Run(t)
+}
+
+func TestAddLogDomainOutput(t *testing.T) {
+	expected := make(linalg.Vector, len(arithmeticTestVec1.Output()))
+	for i, a := range arithmeticTestVec1.Output() {
+		b := arithmeticTestVec2.Output()[i]
+		expected[i] = math.Log(math.Exp(a) + math.Exp(b))
+	}
+
+	actual := AddLogDomain(arithmeticTestVec1, arithmeticTestVec2).Output()
+
+	for i, x := range expected {
+		a := actual[i]
+		if math.Abs(x-a) > 1e-5 {
+			t.Errorf("entry %d: should be %f but got %f", i, x, a)
+		}
+	}
 }
