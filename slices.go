@@ -204,3 +204,105 @@ func (s *slicedRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
 		}
 	}
 }
+
+type repeatResult struct {
+	OutputVec linalg.Vector
+	Repeated  Result
+	N         int
+}
+
+// Repeat concatenates a Result with itself n times.
+// This may be more efficient than using Concat.
+func Repeat(in Result, n int) Result {
+	inVec := in.Output()
+	outVec := make(linalg.Vector, len(inVec)*n)
+	for i := 0; i < n; i++ {
+		copy(outVec[i*len(inVec):], inVec)
+	}
+	return &repeatResult{
+		OutputVec: outVec,
+		Repeated:  in,
+		N:         n,
+	}
+}
+
+func (r *repeatResult) Output() linalg.Vector {
+	return r.OutputVec
+}
+
+func (r *repeatResult) Constant(g Gradient) bool {
+	return r.Repeated.Constant(g)
+}
+
+func (r *repeatResult) PropagateGradient(upstream linalg.Vector, g Gradient) {
+	if r.Repeated.Constant(g) {
+		return
+	}
+	if len(upstream) != len(r.OutputVec) {
+		panic("invalid upstream size")
+	}
+	partLen := len(r.Repeated.Output())
+	firstPart := upstream[:partLen]
+	for i := 1; i < r.N; i++ {
+		partVec := upstream[i*partLen : (i+1)*partLen]
+		firstPart.Add(partVec)
+	}
+	r.Repeated.PropagateGradient(firstPart, g)
+}
+
+type repeatRResult struct {
+	OutputVec  linalg.Vector
+	ROutputVec linalg.Vector
+	Repeated   RResult
+	N          int
+}
+
+// RepeatR is like Repeat, but for RResults.
+func RepeatR(in RResult, n int) RResult {
+	inVec := in.Output()
+	inVecR := in.ROutput()
+	outVec := make(linalg.Vector, len(inVec)*n)
+	outVecR := make(linalg.Vector, len(inVec)*n)
+	for i := 0; i < n; i++ {
+		copy(outVec[i*len(inVec):], inVec)
+		copy(outVecR[i*len(inVec):], inVecR)
+	}
+	return &repeatRResult{
+		OutputVec:  outVec,
+		ROutputVec: outVecR,
+		Repeated:   in,
+		N:          n,
+	}
+}
+
+func (r *repeatRResult) Output() linalg.Vector {
+	return r.OutputVec
+}
+
+func (r *repeatRResult) ROutput() linalg.Vector {
+	return r.ROutputVec
+}
+
+func (r *repeatRResult) Constant(rg RGradient, g Gradient) bool {
+	return r.Repeated.Constant(rg, g)
+}
+
+func (r *repeatRResult) PropagateRGradient(upstream, upstreamR linalg.Vector, rg RGradient,
+	g Gradient) {
+	if r.Repeated.Constant(rg, g) {
+		return
+	}
+	if len(upstream) != len(r.OutputVec) {
+		panic("invalid upstream size")
+	}
+	partLen := len(r.Repeated.Output())
+	firstPart := upstream[:partLen]
+	firstPartR := upstreamR[:partLen]
+	for i := 1; i < r.N; i++ {
+		partVec := upstream[i*partLen : (i+1)*partLen]
+		partVecR := upstreamR[i*partLen : (i+1)*partLen]
+		firstPart.Add(partVec)
+		firstPartR.Add(partVecR)
+	}
+	r.Repeated.PropagateRGradient(firstPart, firstPartR, rg, g)
+}

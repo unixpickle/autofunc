@@ -82,6 +82,18 @@ func (s *sliceTestFunc) ApplyR(v RVector, r RResult) RResult {
 	return SliceR(r, 1, 3)
 }
 
+type repeatTestFunc struct{}
+
+func (s *repeatTestFunc) Apply(r Result) Result {
+	r = Add(Add(r, Scale(r, 0)), r)
+	return Repeat(r, 3)
+}
+
+func (s *repeatTestFunc) ApplyR(v RVector, r RResult) RResult {
+	r = AddR(AddR(r, ScaleR(r, 0)), r)
+	return RepeatR(r, 3)
+}
+
 func TestSliceGradients(t *testing.T) {
 	f := &FuncTest{
 		F:     &sliceTestFunc{},
@@ -113,6 +125,25 @@ func TestWrappedSliceGradients(t *testing.T) {
 func TestWrappedSliceRGradients(t *testing.T) {
 	f := &RFuncTest{
 		F:     &sliceTestFunc{WrapInput: true},
+		Vars:  slicesTestVars,
+		Input: slicesTestVec1,
+		RV:    slicesTestRVec,
+	}
+	f.Run(t)
+}
+
+func TestRepeatGradients(t *testing.T) {
+	f := &FuncTest{
+		F:     &repeatTestFunc{},
+		Vars:  slicesTestVars,
+		Input: slicesTestVec1,
+	}
+	f.Run(t)
+}
+
+func TestRepeatRGradients(t *testing.T) {
+	f := &RFuncTest{
+		F:     &repeatTestFunc{},
 		Vars:  slicesTestVars,
 		Input: slicesTestVec1,
 		RV:    slicesTestRVec,
