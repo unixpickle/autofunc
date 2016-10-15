@@ -14,6 +14,7 @@ var (
 		&autofunc.Variable{Vector: []float64{3, -3, 0, 0.5}},
 		&autofunc.Variable{Vector: []float64{2, -3, 2, -0.5}},
 		&autofunc.Variable{Vector: []float64{0, -3, -5, 0.5}},
+		&autofunc.Variable{Vector: []float64{-2, 0.5, 3}},
 	}
 	TestSeqs = [][]*autofunc.Variable{
 		{TestVars[0], TestVars[1], TestVars[2]},
@@ -25,6 +26,7 @@ var (
 	TestRV = autofunc.RVector{
 		TestVars[0]: []float64{-1, 1, 0.33, -0.33},
 		TestVars[3]: []float64{2, 0.33, -5, 0.33},
+		TestVars[4]: []float64{1, 2, 3},
 	}
 )
 
