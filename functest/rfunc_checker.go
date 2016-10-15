@@ -248,10 +248,7 @@ func (f *RFuncChecker) vecsConsistent(v1, v2 linalg.Vector) bool {
 	}
 	for i, x := range v1 {
 		y := v2[i]
-		if math.IsNaN(x) && math.IsNaN(y) {
-			continue
-		}
-		if math.IsNaN(x) || math.IsNaN(y) || math.Abs(x-y) > f.TestPrec() {
+		if math.IsNaN(x) != math.IsNaN(y) || math.Abs(x-y) > f.TestPrec() {
 			return false
 		}
 	}

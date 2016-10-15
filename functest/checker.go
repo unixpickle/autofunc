@@ -38,11 +38,9 @@ func Check(t *testing.T, c Checker) {
 			for outputIdx, grad := range jacobian {
 				actual := grad[variable][elementIdx]
 				expected := approxVec[outputIdx]
-				if math.IsNaN(actual) {
-					t.Errorf("var %d, output %d, entry %d: expected %f got %f",
-						varIdx, outputIdx, elementIdx, expected, actual)
-				} else if math.Abs(actual-expected) > c.TestPrec() {
-					t.Errorf("var %d, output %d, entry %d: expected %f got %f",
+				if math.IsNaN(actual) != math.IsNaN(expected) ||
+					math.Abs(actual-expected) > c.TestPrec() {
+					t.Errorf("gradient: var %d, output %d, entry %d: expected %f got %f",
 						varIdx, outputIdx, elementIdx, expected, actual)
 				}
 			}
@@ -90,10 +88,7 @@ func checkROutput(t *testing.T, c RChecker) {
 
 	for i, a := range actual {
 		x := expected[i]
-		if math.IsNaN(a) {
-			t.Errorf("r-output %d: got NaN", i)
-			continue
-		} else if math.Abs(x-a) > c.TestPrec() {
+		if math.IsNaN(a) != math.IsNaN(x) || math.Abs(x-a) > c.TestPrec() {
 			t.Errorf("r-output %d: expected %f but got %f", i, x, a)
 		}
 	}
@@ -107,10 +102,8 @@ func checkRGradient(t *testing.T, c RChecker) {
 			for outputIdx, grad := range jacobian {
 				actual := grad[variable][elementIdx]
 				expected := approxVec[outputIdx]
-				if math.IsNaN(actual) {
-					t.Errorf("r-gradient: var %d, output %d, entry %d: expected %f got %f",
-						varIdx, outputIdx, elementIdx, expected, actual)
-				} else if math.Abs(actual-expected) > c.TestPrec() {
+				if math.IsNaN(actual) != math.IsNaN(expected) ||
+					math.Abs(actual-expected) > c.TestPrec() {
 					t.Errorf("r-gradient: var %d, output %d, entry %d: expected %f got %f",
 						varIdx, outputIdx, elementIdx, expected, actual)
 				}

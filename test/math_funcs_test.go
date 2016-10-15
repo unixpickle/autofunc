@@ -11,9 +11,10 @@ import (
 )
 
 var (
-	mathFuncTestVec  = &Variable{Vector: linalg.Vector([]float64{1, -0.5, 0.3, 0.7})}
-	mathFuncTestVars = []*Variable{mathFuncTestVec}
-	mathFuncTestRVec = RVector{
+	mathFuncTestVec    = &Variable{Vector: linalg.Vector([]float64{1, -0.5, 0.3, 0.7})}
+	mathFuncTestVecPos = &Variable{Vector: linalg.Vector([]float64{1, 0.5, 0.3, 0.7})}
+	mathFuncTestVars   = []*Variable{mathFuncTestVec}
+	mathFuncTestRVec   = RVector{
 		mathFuncTestVec: linalg.Vector([]float64{0.5, -10, 5, 3.14}),
 	}
 )
@@ -41,7 +42,7 @@ func TestLogGradient(t *testing.T) {
 	f := &functest.FuncChecker{
 		F:     Log{},
 		Vars:  mathFuncTestVars,
-		Input: mathFuncTestVec,
+		Input: mathFuncTestVecPos,
 	}
 	f.FullCheck(t)
 }
@@ -50,7 +51,7 @@ func TestLogRGradient(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     Log{},
 		Vars:  mathFuncTestVars,
-		Input: mathFuncTestVec,
+		Input: mathFuncTestVecPos,
 		RV:    mathFuncTestRVec,
 	}
 	f.FullCheck(t)
