@@ -104,11 +104,12 @@ func (m *mapResult) PropagateGradient(u [][]linalg.Vector, g autofunc.Gradient) 
 	for i, uSeq := range u {
 		for j, uVec := range uSeq {
 			pool := m.Pool[i][j]
-			tempGrad := autofunc.NewGradient([]*autofunc.Variable{pool})
+			g[pool] = make(linalg.Vector, len(pool.Vector))
 			uCopy := make(linalg.Vector, len(uVec))
 			copy(uCopy, uVec)
-			m.Res[i][j].PropagateGradient(uCopy, tempGrad)
-			downstream[i] = append(downstream[i], tempGrad[pool])
+			m.Res[i][j].PropagateGradient(uCopy, g)
+			downstream[i] = append(downstream[i], g[pool])
+			delete(g, pool)
 		}
 	}
 	m.Input.PropagateGradient(downstream, g)
@@ -138,15 +139,17 @@ func (m *mapRResult) PropagateRGradient(u, uR [][]linalg.Vector, rg autofunc.RGr
 		for j, uVec := range uSeq {
 			uVecR := uR[i][j]
 			pool := m.Pool[i][j]
-			tempGrad := autofunc.NewGradient([]*autofunc.Variable{pool})
-			tempRGrad := autofunc.NewRGradient([]*autofunc.Variable{pool})
+			g[pool] = make(linalg.Vector, len(pool.Vector))
+			rg[pool] = make(linalg.Vector, len(pool.Vector))
 			uCopy := make(linalg.Vector, len(uVec))
 			copy(uCopy, uVec)
 			uCopyR := make(linalg.Vector, len(uVecR))
 			copy(uCopyR, uVecR)
-			m.Res[i][j].PropagateRGradient(uCopy, uCopyR, tempRGrad, tempGrad)
-			downstream[i] = append(downstream[i], tempGrad[pool])
-			downstreamR[i] = append(downstreamR[i], tempRGrad[pool])
+			m.Res[i][j].PropagateRGradient(uCopy, uCopyR, rg, g)
+			downstream[i] = append(downstream[i], g[pool])
+			downstreamR[i] = append(downstreamR[i], rg[pool])
+			delete(g, pool)
+			delete(rg, pool)
 		}
 	}
 	m.Input.PropagateRGradient(downstream, downstreamR, rg, g)
