@@ -62,7 +62,12 @@ func (s *SeqRFuncChecker) FullCheck(t *testing.T) {
 		CheckR(t, &newS)
 		newS.testConsistency(t)
 	})
-	// TODO: implement mulTwiceSeq.
+	t.Run("Square", func(t *testing.T) {
+		newS := *s
+		newS.F = seqfunc.ComposedRFunc{s.F, mulTwiceSeq{}}
+		CheckR(t, &newS)
+		newS.testConsistency(t)
+	})
 }
 
 // TestPrec returns s.Prec or DefaultPrec.
