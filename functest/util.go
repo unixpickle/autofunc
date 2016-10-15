@@ -146,8 +146,8 @@ func (_ mulTwiceSeq) ApplySeqsR(rv autofunc.RVector, r seqfunc.RResult) seqfunc.
 			resVec := make(linalg.Vector, len(outVec))
 			resVecR := make(linalg.Vector, len(outVec))
 			for k, x := range outVec {
-				resVec[i] = x * x
-				resVecR[i] = 2 * x * r.ROutputSeqs()[i][j][k]
+				resVec[k] = x * x
+				resVecR[k] = 2 * x * r.ROutputSeqs()[i][j][k]
 			}
 			newOut = append(newOut, resVec)
 			newOutR = append(newOutR, resVecR)

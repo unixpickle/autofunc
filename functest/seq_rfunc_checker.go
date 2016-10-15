@@ -136,7 +136,7 @@ func (s *SeqRFuncChecker) ApproxPartialsR(v *autofunc.Variable, idx int) linalg.
 					rgrad := autofunc.NewRGradient(s.Vars)
 					upstream[i][j][k] = 1
 					out.PropagateRGradient(upstream, zeroUp, rgrad, grad)
-					upstream[i][i][k] = 0
+					upstream[i][j][k] = 0
 					partials = append(partials, grad[v][idx])
 				}
 			}
@@ -175,7 +175,7 @@ func (s *SeqRFuncChecker) JacobianR() []autofunc.RGradient {
 				rgrad := autofunc.NewRGradient(s.Vars)
 				upstream[i][j][k] = 1
 				out.PropagateRGradient(upstream, zeroUp, rgrad, grad)
-				upstream[i][i][k] = 0
+				upstream[i][j][k] = 0
 				jacobian = append(jacobian, rgrad)
 			}
 		}
