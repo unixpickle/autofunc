@@ -4,6 +4,8 @@ import (
 	"math"
 	"testing"
 
+	. "github.com/unixpickle/autofunc"
+	"github.com/unixpickle/autofunc/functest"
 	"github.com/unixpickle/num-analysis/linalg"
 )
 
@@ -63,22 +65,22 @@ func (_ arithmeticTestFunc) ApplyR(v RVector, r RResult) RResult {
 }
 
 func TestArithmeticGradients(t *testing.T) {
-	f := &FuncTest{
-		F:     ComposedFunc{arithmeticTestFunc{}, AddTwice{}},
+	f := &functest.FuncChecker{
+		F:     arithmeticTestFunc{},
 		Vars:  arithmeticTestVars,
 		Input: arithmeticTestVec4,
 	}
-	f.Run(t)
+	f.FullCheck(t)
 }
 
 func TestArithmeticRGradients(t *testing.T) {
-	f := &RFuncTest{
-		F:     ComposedRFunc{arithmeticTestFunc{}, AddTwice{}},
+	f := &functest.RFuncChecker{
+		F:     arithmeticTestFunc{},
 		Vars:  arithmeticTestVars,
 		Input: arithmeticTestVec4,
 		RV:    arithmeticTestRVec,
 	}
-	f.Run(t)
+	f.FullCheck(t)
 }
 
 func TestAddLogDomainOutput(t *testing.T) {

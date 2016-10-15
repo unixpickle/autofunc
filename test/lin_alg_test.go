@@ -3,6 +3,9 @@ package autofunc
 import (
 	"math"
 	"testing"
+
+	. "github.com/unixpickle/autofunc"
+	"github.com/unixpickle/autofunc/functest"
 )
 
 type matMulVecTest struct{}
@@ -31,29 +34,29 @@ func TestMatMulVecOutput(t *testing.T) {
 	res := matMulVecTest{}.Apply(linTranTestVec)
 	expected := []float64{19, 20, 36}
 	for i, x := range expected {
-		if math.Abs(x-res.Output()[i]) > funcTestPrec {
+		if math.Abs(x-res.Output()[i]) > functest.DefaultPrec {
 			t.Errorf("bad output %d: expected %f got %f", i, x, res.Output()[i])
 		}
 	}
 }
 
 func TestMatMulVecGradient(t *testing.T) {
-	funcTest := &FuncTest{
-		F:     ComposedFunc{matMulVecTest{}, AddTwice{}},
+	f := &functest.FuncChecker{
+		F:     matMulVecTest{},
 		Vars:  linTranTestVariables,
 		Input: linTranTestVec,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestMatMulVecRGradient(t *testing.T) {
-	funcTest := &RFuncTest{
-		F:     ComposedRFunc{matMulVecTest{}, AddTwice{}},
+	f := &functest.RFuncChecker{
+		F:     matMulVecTest{},
 		Vars:  linTranTestVariables,
 		Input: linTranTestVec,
 		RV:    linTranTestRVec,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestOuterProductOutput(t *testing.T) {
@@ -65,27 +68,27 @@ func TestOuterProductOutput(t *testing.T) {
 		4, 2, 3,
 	}
 	for i, x := range expected {
-		if math.Abs(x-res.Output()[i]) > funcTestPrec {
+		if math.Abs(x-res.Output()[i]) > functest.DefaultPrec {
 			t.Errorf("bad output %d: expected %f got %f", i, x, res.Output()[i])
 		}
 	}
 }
 
 func TestOuterProductGradient(t *testing.T) {
-	funcTest := &FuncTest{
-		F:     ComposedFunc{outerProductTest{}, AddTwice{}},
+	f := &functest.FuncChecker{
+		F:     outerProductTest{},
 		Vars:  linTranTestVariables,
 		Input: linTranTestMat2.Data,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestOuterProductRGradient(t *testing.T) {
-	funcTest := &RFuncTest{
-		F:     ComposedRFunc{outerProductTest{}, AddTwice{}},
+	f := &functest.RFuncChecker{
+		F:     outerProductTest{},
 		Vars:  linTranTestVariables,
 		Input: linTranTestMat2.Data,
 		RV:    linTranTestRVec,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }

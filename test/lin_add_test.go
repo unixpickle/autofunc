@@ -3,6 +3,8 @@ package autofunc
 import (
 	"testing"
 
+	. "github.com/unixpickle/autofunc"
+	"github.com/unixpickle/autofunc/functest"
 	"github.com/unixpickle/num-analysis/linalg"
 )
 
@@ -17,22 +19,22 @@ var (
 )
 
 func TestLinAddGradient(t *testing.T) {
-	addFunc := ComposedFunc{&LinAdd{Var: linAddTestVec1}, &LinAdd{Var: linAddTestVec2}, AddTwice{}}
-	f := &FuncTest{
+	addFunc := ComposedFunc{&LinAdd{Var: linAddTestVec1}, &LinAdd{Var: linAddTestVec2}}
+	f := &functest.FuncChecker{
 		F:     addFunc,
 		Vars:  linAddTestVars,
 		Input: linAddTestVec2,
 	}
-	f.Run(t)
+	f.FullCheck(t)
 }
 
 func TestLinAddRGradient(t *testing.T) {
-	addFunc := ComposedRFunc{&LinAdd{Var: linAddTestVec1}, &LinAdd{Var: linAddTestVec2}, AddTwice{}}
-	f := &RFuncTest{
+	addFunc := ComposedRFunc{&LinAdd{Var: linAddTestVec1}, &LinAdd{Var: linAddTestVec2}}
+	f := &functest.RFuncChecker{
 		F:     addFunc,
 		Vars:  linAddTestVars,
 		Input: linAddTestVec2,
 		RV:    linAddTestRVec,
 	}
-	f.Run(t)
+	f.FullCheck(t)
 }

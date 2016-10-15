@@ -4,6 +4,8 @@ import (
 	"math"
 	"testing"
 
+	. "github.com/unixpickle/autofunc"
+	"github.com/unixpickle/autofunc/functest"
 	"github.com/unixpickle/num-analysis/linalg"
 )
 
@@ -53,46 +55,45 @@ var linTranTestRVec = RVector{
 type linTranBatchTest struct{}
 
 func (_ linTranBatchTest) Apply(v Result) Result {
-	return AddTwice{}.Apply(linTranTestMat2.Batch(linTranTestMat1.Batch(v, 2), 2))
+	return linTranTestMat2.Batch(linTranTestMat1.Batch(v, 2), 2)
 }
 
 func (_ linTranBatchTest) ApplyR(rv RVector, v RResult) RResult {
-	batchOut := linTranTestMat2.BatchR(rv, linTranTestMat1.BatchR(rv, v, 2), 2)
-	return AddTwice{}.ApplyR(rv, batchOut)
+	return linTranTestMat2.BatchR(rv, linTranTestMat1.BatchR(rv, v, 2), 2)
 }
 
 func TestLinTranOutput(t *testing.T) {
 	res := linTranTestMat1.Apply(linTranTestVec)
 	expected := []float64{19, 20, 36}
 	for i, x := range expected {
-		if math.Abs(x-res.Output()[i]) > funcTestPrec {
+		if math.Abs(x-res.Output()[i]) > functest.DefaultPrec {
 			t.Errorf("bad output %d: expected %f got %f", i, x, res.Output()[i])
 		}
 	}
 }
 
 func TestLinTranGradient(t *testing.T) {
-	funcTest := &FuncTest{
-		F:     ComposedFunc{linTranTestMat1, linTranTestMat2, AddTwice{}},
+	f := &functest.FuncChecker{
+		F:     ComposedFunc{linTranTestMat1, linTranTestMat2},
 		Vars:  linTranTestVariables,
 		Input: linTranTestVec,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestLinTranRGradient(t *testing.T) {
-	funcTest := &RFuncTest{
-		F:     ComposedRFunc{linTranTestMat1, linTranTestMat2, AddTwice{}},
+	f := &functest.RFuncChecker{
+		F:     ComposedRFunc{linTranTestMat1, linTranTestMat2},
 		Vars:  linTranTestVariables,
 		Input: linTranTestVec,
 		RV:    linTranTestRVec,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestLinTranBatchOutput(t *testing.T) {
 	actual := linTranBatchTest{}.Apply(linTranTestVec2).Output()
-	expected := []float64{349 * 2, 131 * 2}
+	expected := []float64{349, 131}
 	if len(actual) != len(expected) {
 		t.Fatalf("invalid output length (expected %d got %d)", len(expected), len(actual))
 	}
@@ -105,20 +106,20 @@ func TestLinTranBatchOutput(t *testing.T) {
 }
 
 func TestLinTranBatchGradient(t *testing.T) {
-	funcTest := &FuncTest{
+	f := &functest.FuncChecker{
 		F:     linTranBatchTest{},
 		Vars:  linTranTestVariables,
 		Input: linTranTestVec2,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestLinTranBatchRGradient(t *testing.T) {
-	funcTest := &RFuncTest{
+	f := &functest.RFuncChecker{
 		F:     linTranBatchTest{},
 		Vars:  linTranTestVariables,
 		Input: linTranTestVec2,
 		RV:    linTranTestRVec,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }

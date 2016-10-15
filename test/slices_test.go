@@ -3,6 +3,8 @@ package autofunc
 import (
 	"testing"
 
+	. "github.com/unixpickle/autofunc"
+	"github.com/unixpickle/autofunc/functest"
 	"github.com/unixpickle/num-analysis/linalg"
 )
 
@@ -46,22 +48,22 @@ func (_ concatTestFunc) ApplyR(v RVector, r RResult) RResult {
 }
 
 func TestConcatGradients(t *testing.T) {
-	f := &FuncTest{
+	f := &functest.FuncChecker{
 		F:     concatTestFunc{},
 		Vars:  slicesTestVars,
 		Input: slicesTestVec2,
 	}
-	f.Run(t)
+	f.FullCheck(t)
 }
 
 func TestConcatRGradients(t *testing.T) {
-	f := &RFuncTest{
+	f := &functest.RFuncChecker{
 		F:     concatTestFunc{},
 		Vars:  slicesTestVars,
 		Input: slicesTestVec2,
 		RV:    slicesTestRVec,
 	}
-	f.Run(t)
+	f.FullCheck(t)
 }
 
 type sliceTestFunc struct {
@@ -95,58 +97,58 @@ func (s *repeatTestFunc) ApplyR(v RVector, r RResult) RResult {
 }
 
 func TestSliceGradients(t *testing.T) {
-	f := &FuncTest{
+	f := &functest.FuncChecker{
 		F:     &sliceTestFunc{},
 		Vars:  slicesTestVars,
 		Input: slicesTestVec1,
 	}
-	f.Run(t)
+	f.FullCheck(t)
 }
 
 func TestSliceRGradients(t *testing.T) {
-	f := &RFuncTest{
+	f := &functest.RFuncChecker{
 		F:     &sliceTestFunc{},
 		Vars:  slicesTestVars,
 		Input: slicesTestVec1,
 		RV:    slicesTestRVec,
 	}
-	f.Run(t)
+	f.FullCheck(t)
 }
 
 func TestWrappedSliceGradients(t *testing.T) {
-	f := &FuncTest{
+	f := &functest.FuncChecker{
 		F:     &sliceTestFunc{WrapInput: true},
 		Vars:  slicesTestVars,
 		Input: slicesTestVec1,
 	}
-	f.Run(t)
+	f.FullCheck(t)
 }
 
 func TestWrappedSliceRGradients(t *testing.T) {
-	f := &RFuncTest{
+	f := &functest.RFuncChecker{
 		F:     &sliceTestFunc{WrapInput: true},
 		Vars:  slicesTestVars,
 		Input: slicesTestVec1,
 		RV:    slicesTestRVec,
 	}
-	f.Run(t)
+	f.FullCheck(t)
 }
 
 func TestRepeatGradients(t *testing.T) {
-	f := &FuncTest{
+	f := &functest.FuncChecker{
 		F:     &repeatTestFunc{},
 		Vars:  slicesTestVars,
 		Input: slicesTestVec1,
 	}
-	f.Run(t)
+	f.FullCheck(t)
 }
 
 func TestRepeatRGradients(t *testing.T) {
-	f := &RFuncTest{
+	f := &functest.RFuncChecker{
 		F:     &repeatTestFunc{},
 		Vars:  slicesTestVars,
 		Input: slicesTestVec1,
 		RV:    slicesTestRVec,
 	}
-	f.Run(t)
+	f.FullCheck(t)
 }

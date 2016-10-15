@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"testing"
 
+	. "github.com/unixpickle/autofunc"
+	"github.com/unixpickle/autofunc/functest"
 	"github.com/unixpickle/num-analysis/linalg"
 )
 
@@ -17,144 +19,155 @@ var (
 )
 
 func TestExpGradient(t *testing.T) {
-	funcTest := &FuncTest{
-		F:     ComposedFunc{Exp{}, AddTwice{}},
+	f := &functest.FuncChecker{
+		F:     Exp{},
 		Vars:  mathFuncTestVars,
 		Input: mathFuncTestVec,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestExpRGradient(t *testing.T) {
-	funcTest := &RFuncTest{
-		F:     ComposedRFunc{Exp{}, AddTwice{}},
+	f := &functest.RFuncChecker{
+		F:     Exp{},
 		Vars:  mathFuncTestVars,
 		Input: mathFuncTestVec,
 		RV:    mathFuncTestRVec,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestLogGradient(t *testing.T) {
-	funcTest := &FuncTest{
-		F:     ComposedFunc{Log{}, AddTwice{}},
+	f := &functest.FuncChecker{
+		F:     Log{},
 		Vars:  mathFuncTestVars,
 		Input: mathFuncTestVec,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestLogRGradient(t *testing.T) {
-	funcTest := &RFuncTest{
-		F:     ComposedRFunc{Log{}, AddTwice{}},
+	f := &functest.RFuncChecker{
+		F:     Log{},
 		Vars:  mathFuncTestVars,
 		Input: mathFuncTestVec,
 		RV:    mathFuncTestRVec,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestSquaredNormGradient(t *testing.T) {
-	funcTest := &FuncTest{
-		F:     ComposedFunc{SquaredNorm{}, AddTwice{}},
+	f := &functest.FuncChecker{
+		F:     SquaredNorm{},
 		Vars:  mathFuncTestVars,
 		Input: mathFuncTestVec,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestSquaredNormRGradient(t *testing.T) {
-	funcTest := &RFuncTest{
-		F:     ComposedRFunc{SquaredNorm{}, AddTwice{}},
+	f := &functest.RFuncChecker{
+		F:     SquaredNorm{},
 		Vars:  mathFuncTestVars,
 		Input: mathFuncTestVec,
 		RV:    mathFuncTestRVec,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestSigmoidGradient(t *testing.T) {
-	funcTest := &FuncTest{
-		F:     ComposedFunc{Sigmoid{}, Sigmoid{}, Sigmoid{}, AddTwice{}},
+	f := &functest.FuncChecker{
+		F:     ComposedFunc{Sigmoid{}, Sigmoid{}, Sigmoid{}},
 		Vars:  mathFuncTestVars,
 		Input: mathFuncTestVec,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestSigmoidRGradient(t *testing.T) {
-	funcTest := &RFuncTest{
-		F:     ComposedRFunc{Sigmoid{}, Sigmoid{}, Sigmoid{}, AddTwice{}},
+	f := &functest.RFuncChecker{
+		F:     ComposedRFunc{Sigmoid{}, Sigmoid{}, Sigmoid{}},
 		Vars:  mathFuncTestVars,
 		Input: mathFuncTestVec,
 		RV:    mathFuncTestRVec,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestLogSigmoidGradient(t *testing.T) {
-	funcTest := &FuncTest{
-		F:     ComposedFunc{LogSigmoid{}, LogSigmoid{}, LogSigmoid{}, AddTwice{}},
+	f := &functest.FuncChecker{
+		F:     ComposedFunc{LogSigmoid{}, LogSigmoid{}, LogSigmoid{}},
 		Vars:  mathFuncTestVars,
 		Input: mathFuncTestVec,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestLogSigmoidRGradient(t *testing.T) {
-	funcTest := &RFuncTest{
-		F:     ComposedRFunc{LogSigmoid{}, LogSigmoid{}, LogSigmoid{}, AddTwice{}},
+	f := &functest.RFuncChecker{
+		F:     ComposedRFunc{LogSigmoid{}, LogSigmoid{}, LogSigmoid{}},
 		Vars:  mathFuncTestVars,
 		Input: mathFuncTestVec,
 		RV:    mathFuncTestRVec,
 	}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestSoftmaxGradient(t *testing.T) {
-	funcTest := &FuncTest{
-		F:     ComposedFunc{&Softmax{}, AddTwice{}},
+	f := &functest.FuncChecker{
+		F:     &Softmax{},
 		Vars:  mathFuncTestVars,
 		Input: mathFuncTestVec,
 	}
-	funcTest.Run(t)
-	funcTest.F = ComposedFunc{&Softmax{3}, AddTwice{}}
-	funcTest.Run(t)
+	f.FullCheck(t)
+}
+
+func TestSoftmaxGradient3(t *testing.T) {
+	f := &functest.FuncChecker{
+		F:     &Softmax{3},
+		Vars:  mathFuncTestVars,
+		Input: mathFuncTestVec,
+	}
+	f.FullCheck(t)
 }
 
 func TestSoftmaxRGradient(t *testing.T) {
-	funcTest := &RFuncTest{
-		F:     ComposedRFunc{&Softmax{}, AddTwice{}},
+	f := &functest.RFuncChecker{
+		F:     &Softmax{},
 		Vars:  mathFuncTestVars,
 		Input: mathFuncTestVec,
 		RV:    mathFuncTestRVec,
 	}
-	funcTest.Run(t)
-	funcTest.F = ComposedRFunc{&Softmax{3}, AddTwice{}}
-	funcTest.Run(t)
+	f.FullCheck(t)
+}
+
+func TestSoftmaxRGradient3(t *testing.T) {
+	f := &functest.RFuncChecker{
+		F:     &Softmax{3},
+		Vars:  mathFuncTestVars,
+		Input: mathFuncTestVec,
+		RV:    mathFuncTestRVec,
+	}
+	f.FullCheck(t)
 }
 
 func TestSinGradient(t *testing.T) {
-	funcTest := &FuncTest{
+	f := &functest.FuncChecker{
 		F:     Sin{},
 		Vars:  mathFuncTestVars,
 		Input: mathFuncTestVec,
 	}
-	funcTest.Run(t)
-	funcTest.F = ComposedFunc{Sin{}, AddTwice{}}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestSinRGradient(t *testing.T) {
-	funcTest := &RFuncTest{
+	f := &functest.RFuncChecker{
 		F:     Sin{},
 		Vars:  mathFuncTestVars,
 		Input: mathFuncTestVec,
 		RV:    mathFuncTestRVec,
 	}
-	funcTest.Run(t)
-	funcTest.F = ComposedRFunc{Sin{}, AddTwice{}}
-	funcTest.Run(t)
+	f.FullCheck(t)
 }
 
 func TestCosOutput(t *testing.T) {
