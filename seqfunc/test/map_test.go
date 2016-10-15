@@ -43,15 +43,15 @@ var (
 			-0.56957, -0.97235, 0.66386, 0.22420,
 		},
 	}
-)
-
-func TestMapFunc(t *testing.T) {
-	linTran := &autofunc.LinTran{
+	TestLinTran = &autofunc.LinTran{
 		Rows: 4,
 		Cols: 4,
 		Data: TranMatrix,
 	}
-	mf := &seqfunc.MapFunc{F: linTran}
+)
+
+func TestMapFunc(t *testing.T) {
+	mf := &seqfunc.MapFunc{F: TestLinTran}
 	r := &functest.SeqFuncChecker{
 		F:     mf,
 		Vars:  TestVars,
@@ -61,12 +61,62 @@ func TestMapFunc(t *testing.T) {
 }
 
 func TestMapRFunc(t *testing.T) {
-	linTran := &autofunc.LinTran{
-		Rows: 4,
-		Cols: 4,
-		Data: TranMatrix,
+	mf := &seqfunc.MapRFunc{F: TestLinTran}
+	r := &functest.SeqRFuncChecker{
+		F:     mf,
+		Vars:  TestVars,
+		Input: TestSeqs,
+		RV:    TestRV,
 	}
-	mf := &seqfunc.MapRFunc{F: linTran}
+	r.FullCheck(t)
+}
+
+func TestMapBatcherOutput(t *testing.T) {
+	mf := &seqfunc.MapFunc{F: TestLinTran}
+	mb := &seqfunc.MapBatcher{B: TestLinTran}
+
+	expected := mf.ApplySeqs(seqfunc.VarResult(TestSeqs)).OutputSeqs()
+	actual := mb.ApplySeqs(seqfunc.VarResult(TestSeqs)).OutputSeqs()
+
+	equal := func() bool {
+		if len(expected) != len(actual) {
+			return false
+		}
+		for i, x := range expected {
+			y := actual[i]
+			if len(x) != len(y) {
+				return false
+			}
+			for j, xVec := range x {
+				yVec := y[j]
+				if len(xVec) != len(yVec) {
+					return false
+				}
+				if xVec.Copy().Scale(-1).Add(yVec).MaxAbs() > 1e-5 {
+					return false
+				}
+			}
+		}
+		return true
+	}()
+
+	if !equal {
+		t.Errorf("expected %v got %v", expected, actual)
+	}
+}
+
+func TestMapBatcher(t *testing.T) {
+	mf := &seqfunc.MapBatcher{B: TestLinTran}
+	r := &functest.SeqFuncChecker{
+		F:     mf,
+		Vars:  TestVars,
+		Input: TestSeqs,
+	}
+	r.FullCheck(t)
+}
+
+func TestMapRBatcher(t *testing.T) {
+	mf := &seqfunc.MapRBatcher{B: TestLinTran}
 	r := &functest.SeqRFuncChecker{
 		F:     mf,
 		Vars:  TestVars,

@@ -34,6 +34,140 @@ func (m *MapRFunc) ApplySeqsR(rv autofunc.RVector, r RResult) RResult {
 	})
 }
 
+// A MapBatcher maps a Batcher over input sequences by
+// feeding the batcher all of the vectors in a given
+// timestep at once.
+//
+// This can only operate on input sequence lists where all
+// the vectors at a given timestep are the same size.
+type MapBatcher struct {
+	B autofunc.Batcher
+}
+
+// ApplySeqs generates a new sequence list by mapping the
+// batcher over the sequence list.
+func (m *MapBatcher) ApplySeqs(r Result) Result {
+	res := &mapBatcherResult{
+		Input:  r,
+		Output: make([][]linalg.Vector, len(r.OutputSeqs())),
+	}
+
+	maxLen := maxSequenceLen(r.OutputSeqs())
+	for t := 0; t < maxLen; t++ {
+		joined, n := joinTime(r.OutputSeqs(), t)
+		inVar := &autofunc.Variable{Vector: joined}
+		output := m.B.Batch(inVar, n)
+		res.Pool = append(res.Pool, inVar)
+		res.Results = append(res.Results, output)
+		appendSplit(r.OutputSeqs(), t, res.Output, output.Output())
+	}
+
+	return res
+}
+
+type mapBatcherResult struct {
+	Input   Result
+	Pool    []*autofunc.Variable
+	Results []autofunc.Result
+	Output  [][]linalg.Vector
+}
+
+func (m *mapBatcherResult) OutputSeqs() [][]linalg.Vector {
+	return m.Output
+}
+
+func (m *mapBatcherResult) PropagateGradient(u [][]linalg.Vector, g autofunc.Gradient) {
+	maxLen := maxSequenceLen(u)
+	downstream := make([][]linalg.Vector, len(u))
+	for t := 0; t < maxLen; t++ {
+		upstream, _ := joinTime(u, t)
+		poolVar := m.Pool[t]
+		g[poolVar] = make(linalg.Vector, len(poolVar.Vector))
+		m.Results[t].PropagateGradient(upstream, g)
+		appendSplit(u, t, downstream, g[poolVar])
+		delete(g, poolVar)
+	}
+	m.Input.PropagateGradient(downstream, g)
+}
+
+// A MapRBatcher is like a MapBatcher but for an RBatcher.
+type MapRBatcher struct {
+	B autofunc.RBatcher
+}
+
+// ApplySeqs is like MapBatcher.ApplySeqs.
+func (m *MapRBatcher) ApplySeqs(r Result) Result {
+	mb := MapBatcher{B: m.B}
+	return mb.ApplySeqs(r)
+}
+
+// ApplySeqs is like ApplySeqs, but for RResults.
+func (m *MapRBatcher) ApplySeqsR(rv autofunc.RVector, r RResult) RResult {
+	res := &mapBatcherRResult{
+		Input:   r,
+		Output:  make([][]linalg.Vector, len(r.OutputSeqs())),
+		ROutput: make([][]linalg.Vector, len(r.OutputSeqs())),
+	}
+
+	maxLen := maxSequenceLen(r.OutputSeqs())
+	for t := 0; t < maxLen; t++ {
+		joined, n := joinTime(r.OutputSeqs(), t)
+		joinedR, _ := joinTime(r.ROutputSeqs(), t)
+		inVar := &autofunc.RVariable{
+			Variable:   &autofunc.Variable{Vector: joined},
+			ROutputVec: joinedR,
+		}
+		output := m.B.BatchR(rv, inVar, n)
+		res.Pool = append(res.Pool, inVar.Variable)
+		res.Results = append(res.Results, output)
+		appendSplit(r.OutputSeqs(), t, res.Output, output.Output())
+		appendSplit(r.ROutputSeqs(), t, res.ROutput, output.ROutput())
+	}
+
+	return res
+}
+
+type mapBatcherRResult struct {
+	Input   RResult
+	Pool    []*autofunc.Variable
+	Results []autofunc.RResult
+	Output  [][]linalg.Vector
+	ROutput [][]linalg.Vector
+}
+
+func (m *mapBatcherRResult) OutputSeqs() [][]linalg.Vector {
+	return m.Output
+}
+
+func (m *mapBatcherRResult) ROutputSeqs() [][]linalg.Vector {
+	return m.ROutput
+}
+
+func (m *mapBatcherRResult) PropagateRGradient(u, uR [][]linalg.Vector, rg autofunc.RGradient,
+	g autofunc.Gradient) {
+	if g == nil {
+		// We use g for temporary gradients.
+		g = autofunc.Gradient{}
+	}
+
+	maxLen := maxSequenceLen(u)
+	downstream := make([][]linalg.Vector, len(u))
+	downstreamR := make([][]linalg.Vector, len(u))
+	for t := 0; t < maxLen; t++ {
+		upstream, _ := joinTime(u, t)
+		upstreamR, _ := joinTime(uR, t)
+		poolVar := m.Pool[t]
+		rg[poolVar] = make(linalg.Vector, len(poolVar.Vector))
+		g[poolVar] = make(linalg.Vector, len(poolVar.Vector))
+		m.Results[t].PropagateRGradient(upstream, upstreamR, rg, g)
+		appendSplit(u, t, downstream, g[poolVar])
+		appendSplit(uR, t, downstreamR, rg[poolVar])
+		delete(g, poolVar)
+		delete(rg, poolVar)
+	}
+	m.Input.PropagateRGradient(downstream, downstreamR, rg, g)
+}
+
 // Map calls the passed function for each vector in r,
 // generating a new sequence of outputs.
 func Map(r Result, f func(in autofunc.Result) autofunc.Result) Result {
@@ -153,4 +287,38 @@ func (m *mapRResult) PropagateRGradient(u, uR [][]linalg.Vector, rg autofunc.RGr
 		}
 	}
 	m.Input.PropagateRGradient(downstream, downstreamR, rg, g)
+}
+
+func maxSequenceLen(seqs [][]linalg.Vector) int {
+	var max int
+	for _, x := range seqs {
+		if len(x) > max {
+			max = len(x)
+		}
+	}
+	return max
+}
+
+func joinTime(seqs [][]linalg.Vector, t int) (joined linalg.Vector, n int) {
+	for _, s := range seqs {
+		if len(s) > t {
+			joined = append(joined, s[t]...)
+			n++
+		}
+	}
+	return
+}
+
+func appendSplit(seqs [][]linalg.Vector, t int, dest [][]linalg.Vector, joined linalg.Vector) {
+	_, n := joinTime(seqs, t)
+	splitSize := len(joined) / n
+	if len(joined)%n != 0 {
+		panic("cannot evenly split vector")
+	}
+	for lane, seq := range seqs {
+		if len(seq) > t {
+			dest[lane] = append(dest[lane], joined[:splitSize])
+			joined = joined[splitSize:]
+		}
+	}
 }
