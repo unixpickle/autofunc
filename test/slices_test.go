@@ -47,16 +47,7 @@ func (_ concatTestFunc) ApplyR(v RVector, r RResult) RResult {
 	return ConcatR(v1, r, v3)
 }
 
-func TestConcatGradients(t *testing.T) {
-	f := &functest.FuncChecker{
-		F:     concatTestFunc{},
-		Vars:  slicesTestVars,
-		Input: slicesTestVec2,
-	}
-	f.FullCheck(t)
-}
-
-func TestConcatRGradients(t *testing.T) {
+func TestConcat(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     concatTestFunc{},
 		Vars:  slicesTestVars,
@@ -96,16 +87,7 @@ func (s *repeatTestFunc) ApplyR(v RVector, r RResult) RResult {
 	return RepeatR(r, 3)
 }
 
-func TestSliceGradients(t *testing.T) {
-	f := &functest.FuncChecker{
-		F:     &sliceTestFunc{},
-		Vars:  slicesTestVars,
-		Input: slicesTestVec1,
-	}
-	f.FullCheck(t)
-}
-
-func TestSliceRGradients(t *testing.T) {
+func TestSlice(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     &sliceTestFunc{},
 		Vars:  slicesTestVars,
@@ -115,16 +97,7 @@ func TestSliceRGradients(t *testing.T) {
 	f.FullCheck(t)
 }
 
-func TestWrappedSliceGradients(t *testing.T) {
-	f := &functest.FuncChecker{
-		F:     &sliceTestFunc{WrapInput: true},
-		Vars:  slicesTestVars,
-		Input: slicesTestVec1,
-	}
-	f.FullCheck(t)
-}
-
-func TestWrappedSliceRGradients(t *testing.T) {
+func TestWrappedSlice(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     &sliceTestFunc{WrapInput: true},
 		Vars:  slicesTestVars,
@@ -134,16 +107,7 @@ func TestWrappedSliceRGradients(t *testing.T) {
 	f.FullCheck(t)
 }
 
-func TestRepeatGradients(t *testing.T) {
-	f := &functest.FuncChecker{
-		F:     &repeatTestFunc{},
-		Vars:  slicesTestVars,
-		Input: slicesTestVec1,
-	}
-	f.FullCheck(t)
-}
-
-func TestRepeatRGradients(t *testing.T) {
+func TestRepeat(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     &repeatTestFunc{},
 		Vars:  slicesTestVars,

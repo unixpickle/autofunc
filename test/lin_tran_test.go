@@ -72,16 +72,7 @@ func TestLinTranOutput(t *testing.T) {
 	}
 }
 
-func TestLinTranGradient(t *testing.T) {
-	f := &functest.FuncChecker{
-		F:     ComposedFunc{linTranTestMat1, linTranTestMat2},
-		Vars:  linTranTestVariables,
-		Input: linTranTestVec,
-	}
-	f.FullCheck(t)
-}
-
-func TestLinTranRGradient(t *testing.T) {
+func TestLinTranChecks(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     ComposedRFunc{linTranTestMat1, linTranTestMat2},
 		Vars:  linTranTestVariables,
@@ -105,16 +96,7 @@ func TestLinTranBatchOutput(t *testing.T) {
 	}
 }
 
-func TestLinTranBatchGradient(t *testing.T) {
-	f := &functest.FuncChecker{
-		F:     linTranBatchTest{},
-		Vars:  linTranTestVariables,
-		Input: linTranTestVec2,
-	}
-	f.FullCheck(t)
-}
-
-func TestLinTranBatchRGradient(t *testing.T) {
+func TestLinTranBatchChecks(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     linTranBatchTest{},
 		Vars:  linTranTestVariables,

@@ -40,16 +40,7 @@ func TestMatMulVecOutput(t *testing.T) {
 	}
 }
 
-func TestMatMulVecGradient(t *testing.T) {
-	f := &functest.FuncChecker{
-		F:     matMulVecTest{},
-		Vars:  linTranTestVariables,
-		Input: linTranTestVec,
-	}
-	f.FullCheck(t)
-}
-
-func TestMatMulVecRGradient(t *testing.T) {
+func TestMatMulVecChecks(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     matMulVecTest{},
 		Vars:  linTranTestVariables,
@@ -74,16 +65,7 @@ func TestOuterProductOutput(t *testing.T) {
 	}
 }
 
-func TestOuterProductGradient(t *testing.T) {
-	f := &functest.FuncChecker{
-		F:     outerProductTest{},
-		Vars:  linTranTestVariables,
-		Input: linTranTestMat2.Data,
-	}
-	f.FullCheck(t)
-}
-
-func TestOuterProductRGradient(t *testing.T) {
+func TestOuterProductChecks(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     outerProductTest{},
 		Vars:  linTranTestVariables,

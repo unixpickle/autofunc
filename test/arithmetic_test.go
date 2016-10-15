@@ -64,16 +64,7 @@ func (_ arithmeticTestFunc) ApplyR(v RVector, r RResult) RResult {
 	return ScaleFirstR(AddLogDomainR(rVec1, rVec2), allSum)
 }
 
-func TestArithmeticGradients(t *testing.T) {
-	f := &functest.FuncChecker{
-		F:     arithmeticTestFunc{},
-		Vars:  arithmeticTestVars,
-		Input: arithmeticTestVec4,
-	}
-	f.FullCheck(t)
-}
-
-func TestArithmeticRGradients(t *testing.T) {
+func TestArithmetic(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     arithmeticTestFunc{},
 		Vars:  arithmeticTestVars,

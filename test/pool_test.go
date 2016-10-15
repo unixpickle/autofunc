@@ -27,16 +27,6 @@ func (_ poolTestFunc) ApplyR(v RVector, r RResult) RResult {
 }
 
 func TestPool(t *testing.T) {
-	testFunc := ComposedFunc{Sigmoid{}, Exp{}, poolTestFunc{}}
-	f := functest.FuncChecker{
-		F:     testFunc,
-		Vars:  []*Variable{poolTestVar},
-		Input: poolTestVar,
-	}
-	f.FullCheck(t)
-}
-
-func TestPoolR(t *testing.T) {
 	testFunc := ComposedRFunc{Sigmoid{}, Exp{}, poolTestFunc{}}
 	f := functest.RFuncChecker{
 		F:     testFunc,

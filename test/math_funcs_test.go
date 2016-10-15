@@ -19,16 +19,7 @@ var (
 	}
 )
 
-func TestExpGradient(t *testing.T) {
-	f := &functest.FuncChecker{
-		F:     Exp{},
-		Vars:  mathFuncTestVars,
-		Input: mathFuncTestVec,
-	}
-	f.FullCheck(t)
-}
-
-func TestExpRGradient(t *testing.T) {
+func TestExp(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     Exp{},
 		Vars:  mathFuncTestVars,
@@ -38,16 +29,7 @@ func TestExpRGradient(t *testing.T) {
 	f.FullCheck(t)
 }
 
-func TestLogGradient(t *testing.T) {
-	f := &functest.FuncChecker{
-		F:     Log{},
-		Vars:  mathFuncTestVars,
-		Input: mathFuncTestVecPos,
-	}
-	f.FullCheck(t)
-}
-
-func TestLogRGradient(t *testing.T) {
+func TestLog(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     Log{},
 		Vars:  mathFuncTestVars,
@@ -57,16 +39,7 @@ func TestLogRGradient(t *testing.T) {
 	f.FullCheck(t)
 }
 
-func TestSquaredNormGradient(t *testing.T) {
-	f := &functest.FuncChecker{
-		F:     SquaredNorm{},
-		Vars:  mathFuncTestVars,
-		Input: mathFuncTestVec,
-	}
-	f.FullCheck(t)
-}
-
-func TestSquaredNormRGradient(t *testing.T) {
+func TestSquaredNorm(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     SquaredNorm{},
 		Vars:  mathFuncTestVars,
@@ -76,16 +49,7 @@ func TestSquaredNormRGradient(t *testing.T) {
 	f.FullCheck(t)
 }
 
-func TestSigmoidGradient(t *testing.T) {
-	f := &functest.FuncChecker{
-		F:     ComposedFunc{Sigmoid{}, Sigmoid{}, Sigmoid{}},
-		Vars:  mathFuncTestVars,
-		Input: mathFuncTestVec,
-	}
-	f.FullCheck(t)
-}
-
-func TestSigmoidRGradient(t *testing.T) {
+func TestSigmoid(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     ComposedRFunc{Sigmoid{}, Sigmoid{}, Sigmoid{}},
 		Vars:  mathFuncTestVars,
@@ -95,16 +59,7 @@ func TestSigmoidRGradient(t *testing.T) {
 	f.FullCheck(t)
 }
 
-func TestLogSigmoidGradient(t *testing.T) {
-	f := &functest.FuncChecker{
-		F:     ComposedFunc{LogSigmoid{}, LogSigmoid{}, LogSigmoid{}},
-		Vars:  mathFuncTestVars,
-		Input: mathFuncTestVec,
-	}
-	f.FullCheck(t)
-}
-
-func TestLogSigmoidRGradient(t *testing.T) {
+func TestLogSigmoid(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     ComposedRFunc{LogSigmoid{}, LogSigmoid{}, LogSigmoid{}},
 		Vars:  mathFuncTestVars,
@@ -114,25 +69,7 @@ func TestLogSigmoidRGradient(t *testing.T) {
 	f.FullCheck(t)
 }
 
-func TestSoftmaxGradient(t *testing.T) {
-	f := &functest.FuncChecker{
-		F:     &Softmax{},
-		Vars:  mathFuncTestVars,
-		Input: mathFuncTestVec,
-	}
-	f.FullCheck(t)
-}
-
-func TestSoftmaxGradient3(t *testing.T) {
-	f := &functest.FuncChecker{
-		F:     &Softmax{3},
-		Vars:  mathFuncTestVars,
-		Input: mathFuncTestVec,
-	}
-	f.FullCheck(t)
-}
-
-func TestSoftmaxRGradient(t *testing.T) {
+func TestSoftmax(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     &Softmax{},
 		Vars:  mathFuncTestVars,
@@ -142,7 +79,7 @@ func TestSoftmaxRGradient(t *testing.T) {
 	f.FullCheck(t)
 }
 
-func TestSoftmaxRGradient3(t *testing.T) {
+func TestSoftmax3(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     &Softmax{3},
 		Vars:  mathFuncTestVars,
@@ -152,16 +89,7 @@ func TestSoftmaxRGradient3(t *testing.T) {
 	f.FullCheck(t)
 }
 
-func TestSinGradient(t *testing.T) {
-	f := &functest.FuncChecker{
-		F:     Sin{},
-		Vars:  mathFuncTestVars,
-		Input: mathFuncTestVec,
-	}
-	f.FullCheck(t)
-}
-
-func TestSinRGradient(t *testing.T) {
+func TestSin(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     Sin{},
 		Vars:  mathFuncTestVars,
