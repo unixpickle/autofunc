@@ -281,7 +281,7 @@ func (s *SeqRFuncChecker) seqsConsistent(s1, s2 [][]linalg.Vector) bool {
 }
 
 func (s *SeqRFuncChecker) vecsConsistent(v1, v2 linalg.Vector) bool {
-	f := &SeqRFuncChecker{Prec: s.Prec}
+	f := &RFuncChecker{Prec: s.Prec}
 	return f.vecsConsistent(v1, v2)
 }
 
