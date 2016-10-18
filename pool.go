@@ -19,24 +19,51 @@ import "github.com/unixpickle/num-analysis/linalg"
 // completely and accumulate the total gradient with
 // respect to r before r.PropagateGradient().
 func Pool(r Result, f func(Result) Result) Result {
-	poolVar := &Variable{r.Output()}
-	return &pooledResult{
-		Input:   r,
-		PoolVar: poolVar,
-		FOutput: f(poolVar),
-	}
+	return PoolAll([]Result{r}, func(in []Result) Result {
+		return f(in[0])
+	})
 }
 
 // PoolR is like Pool, but for RResults.
 func PoolR(r RResult, f func(RResult) RResult) RResult {
-	rvar := &RVariable{
-		Variable:   &Variable{r.Output()},
-		ROutputVec: r.ROutput(),
+	return PoolAllR([]RResult{r}, func(in []RResult) RResult {
+		return f(in[0])
+	})
+}
+
+// PoolAll is like Pool, but it can pool multiple Results.
+// Each entry in ins will only be back-propagated through
+// one time for each back-propagation through the result
+// of the pool.
+func PoolAll(ins []Result, f func([]Result) Result) Result {
+	poolVars := make([]*Variable, len(ins))
+	poolRes := make([]Result, len(ins))
+	for i, in := range ins {
+		poolVars[i] = &Variable{Vector: in.Output()}
+		poolRes[i] = poolVars[i]
+	}
+	return &pooledResult{
+		Inputs:   ins,
+		PoolVars: poolVars,
+		FOutput:  f(poolRes),
+	}
+}
+
+// PoolAllR is like PoolAll, but for RResults.
+func PoolAllR(ins []RResult, f func([]RResult) RResult) RResult {
+	poolVars := make([]*Variable, len(ins))
+	poolRes := make([]RResult, len(ins))
+	for i, in := range ins {
+		poolVars[i] = &Variable{Vector: in.Output()}
+		poolRes[i] = &RVariable{
+			Variable:   poolVars[i],
+			ROutputVec: in.ROutput(),
+		}
 	}
 	return &pooledRResult{
-		Input:   r,
-		PoolVar: rvar,
-		FOutput: f(rvar),
+		Inputs:   ins,
+		PoolVars: poolVars,
+		FOutput:  f(poolRes),
 	}
 }
 
@@ -62,9 +89,9 @@ func PoolSplitR(n int, r RResult, f func([]RResult) RResult) RResult {
 }
 
 type pooledResult struct {
-	Input   Result
-	PoolVar *Variable
-	FOutput Result
+	Inputs   []Result
+	PoolVars []*Variable
+	FOutput  Result
 }
 
 func (p *pooledResult) Output() linalg.Vector {
@@ -74,30 +101,44 @@ func (p *pooledResult) Output() linalg.Vector {
 func (p *pooledResult) Constant(g Gradient) bool {
 	if !p.FOutput.Constant(g) {
 		return false
-	} else if p.Input.Constant(g) {
-		return true
-	} else {
-		return p.FOutput.Constant(Gradient{p.PoolVar: linalg.Vector{}})
 	}
+	for i, v := range p.PoolVars {
+		if !p.FOutput.Constant(Gradient{v: linalg.Vector{}}) &&
+			!p.Inputs[i].Constant(g) {
+			return false
+		}
+	}
+	return true
 }
 
 func (p *pooledResult) PropagateGradient(upstream linalg.Vector, grad Gradient) {
-	inConst := p.Input.Constant(grad)
-	if !inConst {
-		grad[p.PoolVar] = make(linalg.Vector, len(p.PoolVar.Vector))
+	constants := make([]bool, len(p.PoolVars))
+	for i, v := range p.PoolVars {
+		constants[i] = p.FOutput.Constant(Gradient{v: linalg.Vector{}}) ||
+			p.Inputs[i].Constant(grad)
+		if !constants[i] {
+			grad[v] = make(linalg.Vector, len(v.Vector))
+		}
 	}
 	p.FOutput.PropagateGradient(upstream, grad)
-	if !inConst {
-		upsGrad := grad[p.PoolVar]
-		delete(grad, p.PoolVar)
-		p.Input.PropagateGradient(upsGrad, grad)
+	upstreams := make([]linalg.Vector, len(p.PoolVars))
+	for i, v := range p.PoolVars {
+		if !constants[i] {
+			upstreams[i] = grad[v]
+			delete(grad, v)
+		}
+	}
+	for i, c := range constants {
+		if !c {
+			p.Inputs[i].PropagateGradient(upstreams[i], grad)
+		}
 	}
 }
 
 type pooledRResult struct {
-	Input   RResult
-	PoolVar *RVariable
-	FOutput RResult
+	Inputs   []RResult
+	PoolVars []*Variable
+	FOutput  RResult
 }
 
 func (p *pooledRResult) Output() linalg.Vector {
@@ -111,29 +152,44 @@ func (p *pooledRResult) ROutput() linalg.Vector {
 func (p *pooledRResult) Constant(rg RGradient, g Gradient) bool {
 	if !p.FOutput.Constant(rg, g) {
 		return false
-	} else if p.Input.Constant(rg, g) {
-		return true
-	} else {
-		return p.FOutput.Constant(RGradient{p.PoolVar.Variable: linalg.Vector{}}, nil)
 	}
+	for i, v := range p.PoolVars {
+		if !p.FOutput.Constant(RGradient{v: linalg.Vector{}}, nil) &&
+			!p.Inputs[i].Constant(rg, g) {
+			return false
+		}
+	}
+	return true
 }
 
-func (p *pooledRResult) PropagateRGradient(upstream, upstreamR linalg.Vector,
-	rgrad RGradient, grad Gradient) {
-	inConst := p.Input.Constant(rgrad, grad)
-	if !inConst {
-		rgrad[p.PoolVar.Variable] = make(linalg.Vector, len(p.PoolVar.Variable.Vector))
-		if grad == nil {
-			grad = Gradient{}
+func (p *pooledRResult) PropagateRGradient(upstream, upstreamR linalg.Vector, rgrad RGradient,
+	grad Gradient) {
+	if grad == nil {
+		grad = Gradient{}
+	}
+	constants := make([]bool, len(p.PoolVars))
+	for i, v := range p.PoolVars {
+		constants[i] = p.FOutput.Constant(RGradient{v: linalg.Vector{}}, nil) ||
+			p.Inputs[i].Constant(rgrad, grad)
+		if !constants[i] {
+			grad[v] = make(linalg.Vector, len(v.Vector))
+			rgrad[v] = make(linalg.Vector, len(v.Vector))
 		}
-		grad[p.PoolVar.Variable] = make(linalg.Vector, len(p.PoolVar.Variable.Vector))
 	}
 	p.FOutput.PropagateRGradient(upstream, upstreamR, rgrad, grad)
-	if !inConst {
-		upsGradR := rgrad[p.PoolVar.Variable]
-		upsGrad := grad[p.PoolVar.Variable]
-		delete(grad, p.PoolVar.Variable)
-		delete(rgrad, p.PoolVar.Variable)
-		p.Input.PropagateRGradient(upsGrad, upsGradR, rgrad, grad)
+	upstreams := make([]linalg.Vector, len(p.PoolVars))
+	upstreamsR := make([]linalg.Vector, len(p.PoolVars))
+	for i, v := range p.PoolVars {
+		if !constants[i] {
+			upstreams[i] = grad[v]
+			upstreamsR[i] = rgrad[v]
+			delete(grad, v)
+			delete(rgrad, v)
+		}
+	}
+	for i, c := range constants {
+		if !c {
+			p.Inputs[i].PropagateRGradient(upstreams[i], upstreamsR[i], rgrad, grad)
+		}
 	}
 }
