@@ -306,3 +306,30 @@ func (r *repeatRResult) PropagateRGradient(upstream, upstreamR linalg.Vector, rg
 	}
 	r.Repeated.PropagateRGradient(firstPart, firstPartR, rg, g)
 }
+
+// Split slices a Result into n even sub-slices.
+// The length of the input must be divisible by n.
+func Split(n int, in Result) []Result {
+	if len(in.Output())%n != 0 {
+		panic("count does not divide input length")
+	}
+	parts := make([]Result, n)
+	partSize := len(in.Output()) / n
+	for i := 0; i < n; i++ {
+		parts[i] = Slice(in, i*partSize, (i+1)*partSize)
+	}
+	return parts
+}
+
+// SplitR is like Split for RResults.
+func SplitR(n int, in RResult) []RResult {
+	if len(in.Output())%n != 0 {
+		panic("count does not divide input length")
+	}
+	parts := make([]RResult, n)
+	partSize := len(in.Output()) / n
+	for i := 0; i < n; i++ {
+		parts[i] = SliceR(in, i*partSize, (i+1)*partSize)
+	}
+	return parts
+}

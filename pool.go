@@ -47,33 +47,17 @@ func PoolR(r RResult, f func(RResult) RResult) RResult {
 //
 // The input's length must be divisible by n.
 func PoolSplit(n int, r Result, f func([]Result) Result) Result {
-	if len(r.Output())%n != 0 {
-		panic("count must divide length of input")
-	}
 	return Pool(r, func(in Result) Result {
 		// This is efficient because Slice's result checks if
 		// its input was a *Variable.
-		parts := make([]Result, 0, n)
-		partSize := len(in.Output()) / n
-		for i := 0; i < len(in.Output()); i += partSize {
-			parts = append(parts, Slice(in, i, i+partSize))
-		}
-		return f(parts)
+		return f(Split(n, in))
 	})
 }
 
 // PoolSplitR is like PoolSplit, but for RResults.
 func PoolSplitR(n int, r RResult, f func([]RResult) RResult) RResult {
-	if len(r.Output())%n != 0 {
-		panic("count must divide length of input")
-	}
 	return PoolR(r, func(in RResult) RResult {
-		parts := make([]RResult, 0, n)
-		partSize := len(in.Output()) / n
-		for i := 0; i < len(in.Output()); i += partSize {
-			parts = append(parts, SliceR(in, i, i+partSize))
-		}
-		return f(parts)
+		return f(SplitR(n, in))
 	})
 }
 
