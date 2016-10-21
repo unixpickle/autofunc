@@ -93,7 +93,7 @@ func (a *addAllRResult) PropagateRGradient(u, uR linalg.Vector, rg autofunc.RGra
 		upSeqsR[i] = make([]linalg.Vector, len(outSeq))
 		for j := range upSeqs[i] {
 			upSeqs[i][j] = u
-			upSeqs[i][j] = uR
+			upSeqsR[i][j] = uR
 		}
 	}
 	a.In.PropagateRGradient(upSeqs, upSeqsR, rg, g)
