@@ -42,6 +42,31 @@ func AddAllR(in RResult) autofunc.RResult {
 	return &addAllRResult{In: in, Sum: sum, SumR: sumR}
 }
 
+// Mean computes the overall mean of all the vectors in
+// the sequence list.
+// Like AddAll, Mean requires that all vectors in all
+// sequences have the same length.
+// It is invalid to compute the mean over a list of empty
+// sequences or an empty list of sequences.
+func Mean(in Result) autofunc.Result {
+	sum := AddAll(in)
+	return autofunc.Scale(sum, 1/float64(count(in.OutputSeqs())))
+}
+
+// MeanR is like Mean for RResults.
+func MeanR(in RResult) autofunc.RResult {
+	sum := AddAllR(in)
+	return autofunc.ScaleR(sum, 1/float64(count(in.OutputSeqs())))
+}
+
+func count(s [][]linalg.Vector) int {
+	var res int
+	for _, seq := range s {
+		res += len(seq)
+	}
+	return res
+}
+
 type addAllResult struct {
 	In  Result
 	Sum linalg.Vector
