@@ -50,6 +50,20 @@ var (
 	}
 )
 
+type MapNTestFunc struct{}
+
+func (_ MapNTestFunc) ApplySeqs(in seqfunc.Result) seqfunc.Result {
+	return seqfunc.MapN(func(ins ...autofunc.Result) autofunc.Result {
+		return autofunc.Add(ins[0], autofunc.Scale(ins[1], -2))
+	}, in, seqfunc.VarResult(TestSeqs))
+}
+
+func (_ MapNTestFunc) ApplySeqsR(rv autofunc.RVector, in seqfunc.RResult) seqfunc.RResult {
+	return seqfunc.MapNR(func(ins ...autofunc.RResult) autofunc.RResult {
+		return autofunc.AddR(ins[0], autofunc.ScaleR(ins[1], -2))
+	}, in, seqfunc.VarRResult(rv, TestSeqs))
+}
+
 func TestMapFunc(t *testing.T) {
 	mf := &seqfunc.MapFunc{F: TestLinTran}
 	r := &functest.SeqFuncChecker{
@@ -119,6 +133,16 @@ func TestMapRBatcher(t *testing.T) {
 	mf := &seqfunc.MapRBatcher{B: TestLinTran}
 	r := &functest.SeqRFuncChecker{
 		F:     mf,
+		Vars:  TestVars,
+		Input: TestSeqs,
+		RV:    TestRV,
+	}
+	r.FullCheck(t)
+}
+
+func TestMapMulti(t *testing.T) {
+	r := &functest.SeqRFuncChecker{
+		F:     MapNTestFunc{},
 		Vars:  TestVars,
 		Input: TestSeqs,
 		RV:    TestRV,

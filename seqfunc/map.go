@@ -168,53 +168,124 @@ func (m *mapBatcherRResult) PropagateRGradient(u, uR [][]linalg.Vector, rg autof
 	m.Input.PropagateRGradient(downstream, downstreamR, rg, g)
 }
 
-// Map calls the passed function for each vector in r,
-// generating a new sequence of outputs.
-func Map(r Result, f func(in autofunc.Result) autofunc.Result) Result {
-	pool := make([][]*autofunc.Variable, len(r.OutputSeqs()))
-	res := make([][]autofunc.Result, len(pool))
-	out := make([][]linalg.Vector, len(pool))
-	for i, seq := range r.OutputSeqs() {
-		for _, vec := range seq {
-			p := &autofunc.Variable{Vector: vec}
-			subRes := f(p)
-			pool[i] = append(pool[i], p)
+// Map maps a function over a sequence, producing a new
+// sequence whose entries are the result mapping.
+func Map(in Result, f func(in autofunc.Result) autofunc.Result) Result {
+	return MapN(func(ins ...autofunc.Result) autofunc.Result {
+		return f(ins[0])
+	}, in)
+}
+
+// MapR is like Map but for RResults.
+func MapR(in RResult, f func(in autofunc.RResult) autofunc.RResult) RResult {
+	return MapNR(func(ins ...autofunc.RResult) autofunc.RResult {
+		return f(ins[0])
+	}, in)
+}
+
+// MapN takes one or more input sequences and maps a
+// function over them.
+// The function will receive one argument for each input
+// sequence list.
+//
+// The input sequence lists must have the same lengths,
+// and corresponding sequences must also match in length,
+// but the vectors in a given position may differ in size
+// across different input sequence lists.
+func MapN(f func(in ...autofunc.Result) autofunc.Result, in1 Result, ins ...Result) Result {
+	allIns := append([]Result{in1}, ins...)
+	allLists := make([][][]linalg.Vector, len(allIns))
+	for i, x := range allIns {
+		allLists[i] = x.OutputSeqs()
+		if i > 0 {
+			if len(allLists[i]) != len(allLists[0]) {
+				panic("input dimensions mismatch")
+			}
+			for j, seq := range allLists[i] {
+				if len(seq) != len(allLists[0][j]) {
+					panic("input dimensions mismatch")
+				}
+			}
+		}
+	}
+
+	pool := make([][][]*autofunc.Variable, len(allIns))
+	for i := range pool {
+		pool[i] = make([][]*autofunc.Variable, len(allLists[0]))
+	}
+	res := make([][]autofunc.Result, len(allLists[0]))
+	out := make([][]linalg.Vector, len(allLists[0]))
+
+	for i, seq := range allLists[0] {
+		for j := range seq {
+			var mapIns []autofunc.Result
+			for k, list := range allLists {
+				p := &autofunc.Variable{Vector: list[i][j]}
+				pool[k][i] = append(pool[k][i], p)
+				mapIns = append(mapIns, p)
+			}
+			subRes := f(mapIns...)
 			res[i] = append(res[i], subRes)
 			out[i] = append(out[i], subRes.Output())
 		}
 	}
+
 	return &mapResult{
-		Input:  r,
+		Inputs: allIns,
 		Pool:   pool,
 		Res:    res,
 		Output: out,
 	}
 }
 
-// MapR is like Map but for RResults.
-func MapR(r RResult, f func(in autofunc.RResult) autofunc.RResult) RResult {
-	pool := make([][]*autofunc.Variable, len(r.OutputSeqs()))
-	res := make([][]autofunc.RResult, len(pool))
-	out := make([][]linalg.Vector, len(pool))
-	outR := make([][]linalg.Vector, len(pool))
-	rSeqs := r.ROutputSeqs()
-	for i, seq := range r.OutputSeqs() {
-		seqR := rSeqs[i]
-		for j, vec := range seq {
-			vecR := seqR[j]
-			p := &autofunc.Variable{Vector: vec}
-			subRes := f(&autofunc.RVariable{
-				Variable:   p,
-				ROutputVec: vecR,
-			})
-			pool[i] = append(pool[i], p)
+// MapNR is like MapN, but for RResults.
+func MapNR(f func(in ...autofunc.RResult) autofunc.RResult, in1 RResult, ins ...RResult) RResult {
+	allIns := append([]RResult{in1}, ins...)
+	allLists := make([][][]linalg.Vector, len(allIns))
+	allListsR := make([][][]linalg.Vector, len(allIns))
+	for i, x := range allIns {
+		allLists[i] = x.OutputSeqs()
+		allListsR[i] = x.ROutputSeqs()
+		if i > 0 {
+			if len(allLists[i]) != len(allLists[0]) {
+				panic("input dimensions mismatch")
+			}
+			for j, seq := range allLists[i] {
+				if len(seq) != len(allLists[0][j]) {
+					panic("input dimensions mismatch")
+				}
+			}
+		}
+	}
+
+	pool := make([][][]*autofunc.Variable, len(allIns))
+	for i := range pool {
+		pool[i] = make([][]*autofunc.Variable, len(allLists[0]))
+	}
+	res := make([][]autofunc.RResult, len(allLists[0]))
+	out := make([][]linalg.Vector, len(allLists[0]))
+	outR := make([][]linalg.Vector, len(allLists[0]))
+
+	for i, seq := range allLists[0] {
+		for j := range seq {
+			var mapIns []autofunc.RResult
+			for k, list := range allLists {
+				p := &autofunc.Variable{Vector: list[i][j]}
+				pool[k][i] = append(pool[k][i], p)
+				mapIns = append(mapIns, &autofunc.RVariable{
+					Variable:   p,
+					ROutputVec: allListsR[k][i][j],
+				})
+			}
+			subRes := f(mapIns...)
 			res[i] = append(res[i], subRes)
 			out[i] = append(out[i], subRes.Output())
 			outR[i] = append(outR[i], subRes.ROutput())
 		}
 	}
+
 	return &mapRResult{
-		Input:   r,
+		Inputs:  allIns,
 		Pool:    pool,
 		Res:     res,
 		Output:  out,
@@ -223,8 +294,8 @@ func MapR(r RResult, f func(in autofunc.RResult) autofunc.RResult) RResult {
 }
 
 type mapResult struct {
-	Input  Result
-	Pool   [][]*autofunc.Variable
+	Inputs []Result
+	Pool   [][][]*autofunc.Variable
 	Res    [][]autofunc.Result
 	Output [][]linalg.Vector
 }
@@ -234,24 +305,34 @@ func (m *mapResult) OutputSeqs() [][]linalg.Vector {
 }
 
 func (m *mapResult) PropagateGradient(u [][]linalg.Vector, g autofunc.Gradient) {
-	downstream := make([][]linalg.Vector, len(u))
+	downstream := make([][][]linalg.Vector, len(m.Pool))
+	for i := range downstream {
+		downstream[i] = make([][]linalg.Vector, len(u))
+	}
 	for i, uSeq := range u {
 		for j, uVec := range uSeq {
-			pool := m.Pool[i][j]
-			g[pool] = make(linalg.Vector, len(pool.Vector))
+			for k := range m.Pool {
+				pool := m.Pool[k][i][j]
+				g[pool] = make(linalg.Vector, len(pool.Vector))
+			}
 			uCopy := make(linalg.Vector, len(uVec))
 			copy(uCopy, uVec)
 			m.Res[i][j].PropagateGradient(uCopy, g)
-			downstream[i] = append(downstream[i], g[pool])
-			delete(g, pool)
+			for k := range m.Pool {
+				pool := m.Pool[k][i][j]
+				downstream[k][i] = append(downstream[k][i], g[pool])
+				delete(g, pool)
+			}
 		}
 	}
-	m.Input.PropagateGradient(downstream, g)
+	for i, down := range downstream {
+		m.Inputs[i].PropagateGradient(down, g)
+	}
 }
 
 type mapRResult struct {
-	Input   RResult
-	Pool    [][]*autofunc.Variable
+	Inputs  []RResult
+	Pool    [][][]*autofunc.Variable
 	Res     [][]autofunc.RResult
 	Output  [][]linalg.Vector
 	ROutput [][]linalg.Vector
@@ -267,26 +348,39 @@ func (m *mapRResult) ROutputSeqs() [][]linalg.Vector {
 
 func (m *mapRResult) PropagateRGradient(u, uR [][]linalg.Vector, rg autofunc.RGradient,
 	g autofunc.Gradient) {
-	downstream := make([][]linalg.Vector, len(u))
-	downstreamR := make([][]linalg.Vector, len(u))
+	if g == nil {
+		g = autofunc.Gradient{}
+	}
+	downstream := make([][][]linalg.Vector, len(m.Pool))
+	downstreamR := make([][][]linalg.Vector, len(m.Pool))
+	for i := range downstream {
+		downstream[i] = make([][]linalg.Vector, len(u))
+		downstreamR[i] = make([][]linalg.Vector, len(u))
+	}
 	for i, uSeq := range u {
 		for j, uVec := range uSeq {
-			uVecR := uR[i][j]
-			pool := m.Pool[i][j]
-			g[pool] = make(linalg.Vector, len(pool.Vector))
-			rg[pool] = make(linalg.Vector, len(pool.Vector))
+			for k := range m.Pool {
+				pool := m.Pool[k][i][j]
+				g[pool] = make(linalg.Vector, len(pool.Vector))
+				rg[pool] = make(linalg.Vector, len(pool.Vector))
+			}
 			uCopy := make(linalg.Vector, len(uVec))
 			copy(uCopy, uVec)
-			uCopyR := make(linalg.Vector, len(uVecR))
-			copy(uCopyR, uVecR)
+			uCopyR := make(linalg.Vector, len(uVec))
+			copy(uCopyR, uR[i][j])
 			m.Res[i][j].PropagateRGradient(uCopy, uCopyR, rg, g)
-			downstream[i] = append(downstream[i], g[pool])
-			downstreamR[i] = append(downstreamR[i], rg[pool])
-			delete(g, pool)
-			delete(rg, pool)
+			for k := range m.Pool {
+				pool := m.Pool[k][i][j]
+				downstream[k][i] = append(downstream[k][i], g[pool])
+				downstreamR[k][i] = append(downstreamR[k][i], rg[pool])
+				delete(g, pool)
+				delete(rg, pool)
+			}
 		}
 	}
-	m.Input.PropagateRGradient(downstream, downstreamR, rg, g)
+	for i, down := range downstream {
+		m.Inputs[i].PropagateRGradient(down, downstreamR[i], rg, g)
+	}
 }
 
 func maxSequenceLen(seqs [][]linalg.Vector) int {
