@@ -129,8 +129,29 @@ func TestMapBatcher(t *testing.T) {
 	r.FullCheck(t)
 }
 
+func TestFixedMapBatcher(t *testing.T) {
+	mf := &seqfunc.FixedMapBatcher{B: TestLinTran, BatchSize: 2}
+	r := &functest.SeqFuncChecker{
+		F:     mf,
+		Vars:  TestVars,
+		Input: TestSeqs,
+	}
+	r.FullCheck(t)
+}
+
 func TestMapRBatcher(t *testing.T) {
 	mf := &seqfunc.MapRBatcher{B: TestLinTran}
+	r := &functest.SeqRFuncChecker{
+		F:     mf,
+		Vars:  TestVars,
+		Input: TestSeqs,
+		RV:    TestRV,
+	}
+	r.FullCheck(t)
+}
+
+func TestFixedMapRBatcher(t *testing.T) {
+	mf := &seqfunc.FixedMapRBatcher{B: TestLinTran, BatchSize: 2}
 	r := &functest.SeqRFuncChecker{
 		F:     mf,
 		Vars:  TestVars,
@@ -148,4 +169,31 @@ func TestMapMulti(t *testing.T) {
 		RV:    TestRV,
 	}
 	r.FullCheck(t)
+}
+
+func TestMixedMatcher(t *testing.T) {
+	m := &mixedMapBatcher{
+		fb: &seqfunc.FixedMapBatcher{B: TestLinTran, BatchSize: 2},
+		br: &seqfunc.MapRBatcher{B: TestLinTran},
+	}
+	r := &functest.SeqRFuncChecker{
+		F:     m,
+		Vars:  TestVars,
+		Input: TestSeqs,
+		RV:    TestRV,
+	}
+	r.FullCheck(t)
+}
+
+type mixedMapBatcher struct {
+	fb *seqfunc.FixedMapBatcher
+	br *seqfunc.MapRBatcher
+}
+
+func (m *mixedMapBatcher) ApplySeqs(r seqfunc.Result) seqfunc.Result {
+	return m.fb.ApplySeqs(r)
+}
+
+func (m *mixedMapBatcher) ApplySeqsR(rv autofunc.RVector, r seqfunc.RResult) seqfunc.RResult {
+	return m.br.ApplySeqsR(rv, r)
 }
