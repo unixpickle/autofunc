@@ -15,9 +15,24 @@ type matMulResult struct {
 // MatMulVec multiplies a row-major matrix by a column
 // vector.
 func MatMulVec(mat Result, rows, cols int, vec Result) Result {
+	return MatMulVecs(mat, rows, cols, vec)
+}
+
+// MatMulVecs multiplies a row-major matrix by a
+// column-major matrix, producing another column-major
+// matrix.
+//
+// The number of columns in the right matrix is inferred
+// by dividing its length by the number of columns in the
+// left matrix.
+func MatMulVecs(mat Result, rows, cols int, vecs Result) Result {
 	if len(mat.Output()) != rows*cols {
 		panic("invalid matrix data size")
 	}
+	if len(vecs.Output())%cols != 0 {
+		panic("invalid vecs size")
+	}
+	n := len(vecs.Output()) / cols
 	v := &Variable{Vector: mat.Output()}
 	lt := &LinTran{
 		Data: v,
@@ -27,7 +42,7 @@ func MatMulVec(mat Result, rows, cols int, vec Result) Result {
 	return &matMulResult{
 		MatIn:  mat,
 		MatVar: v,
-		Res:    lt.Apply(vec),
+		Res:    lt.Batch(vecs, n),
 	}
 }
 
@@ -60,9 +75,18 @@ type matMulRResult struct {
 
 // MatMulVecR is like MatMulVec but for RResults.
 func MatMulVecR(mat RResult, rows, cols int, vec RResult) RResult {
+	return MatMulVecsR(mat, rows, cols, vec)
+}
+
+// MatMulVecsR is like MatMulVecs, but for RResults.
+func MatMulVecsR(mat RResult, rows, cols int, vecs RResult) RResult {
 	if len(mat.Output()) != rows*cols {
 		panic("invalid matrix data size")
 	}
+	if len(vecs.Output())%cols != 0 {
+		panic("invalid vecs size")
+	}
+	n := len(vecs.Output()) / cols
 	v := &Variable{Vector: mat.Output()}
 	lt := &LinTran{
 		Data: v,
@@ -72,7 +96,7 @@ func MatMulVecR(mat RResult, rows, cols int, vec RResult) RResult {
 	return &matMulRResult{
 		MatIn:  mat,
 		MatVar: v,
-		Res:    lt.ApplyR(RVector{v: mat.ROutput()}, vec),
+		Res:    lt.BatchR(RVector{v: mat.ROutput()}, vecs, n),
 	}
 }
 
