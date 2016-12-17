@@ -88,6 +88,41 @@ func ConcatAllR(in RResult) autofunc.RResult {
 	return &concatAllRResult{Input: in, OutVec: joined, ROutVec: joinedR}
 }
 
+// ConcatLast concatenates the last timestep outputs of
+// all the sequences.
+//
+// Empty input sequences are ignored.
+func ConcatLast(in Result) autofunc.Result {
+	var joined linalg.Vector
+	for _, x := range in.OutputSeqs() {
+		if len(x) > 0 {
+			joined = append(joined, x[len(x)-1]...)
+		}
+	}
+	return &concatLastResult{
+		OutVec: joined,
+		In:     in,
+	}
+}
+
+// ConcatLastR is like ConcatLast for RResults.
+func ConcatLastR(in RResult) autofunc.RResult {
+	var joined, joinedR linalg.Vector
+	outSeqsR := in.ROutputSeqs()
+	for i, x := range in.OutputSeqs() {
+		if len(x) > 0 {
+			xR := outSeqsR[i]
+			joined = append(joined, x[len(x)-1]...)
+			joinedR = append(joinedR, xR[len(xR)-1]...)
+		}
+	}
+	return &concatLastRResult{
+		OutVec:  joined,
+		ROutVec: joinedR,
+		In:      in,
+	}
+}
+
 func count(s [][]linalg.Vector) int {
 	var res int
 	for _, seq := range s {
@@ -213,4 +248,76 @@ func (a *concatAllRResult) PropagateRGradient(u, uR linalg.Vector, rg autofunc.R
 		splitUpstreamR = append(splitUpstreamR, splitSeqR)
 	}
 	a.Input.PropagateRGradient(splitUpstream, splitUpstreamR, rg, g)
+}
+
+type concatLastResult struct {
+	OutVec linalg.Vector
+	In     Result
+}
+
+func (c *concatLastResult) Output() linalg.Vector {
+	return c.OutVec
+}
+
+func (c *concatLastResult) Constant(g autofunc.Gradient) bool {
+	return false
+}
+
+func (c *concatLastResult) PropagateGradient(u linalg.Vector, g autofunc.Gradient) {
+	up := make([][]linalg.Vector, len(c.In.OutputSeqs()))
+	var idx int
+	for i, seq := range c.In.OutputSeqs() {
+		up[i] = make([]linalg.Vector, len(seq))
+		if len(seq) == 0 {
+			continue
+		}
+		for j, x := range seq[:len(seq)-1] {
+			up[i][j] = make(linalg.Vector, len(x))
+		}
+		last := seq[len(seq)-1]
+		up[i][len(seq)-1] = u[idx : idx+len(last)]
+		idx += len(last)
+	}
+	c.In.PropagateGradient(up, g)
+}
+
+type concatLastRResult struct {
+	OutVec  linalg.Vector
+	ROutVec linalg.Vector
+	In      RResult
+}
+
+func (c *concatLastRResult) Output() linalg.Vector {
+	return c.OutVec
+}
+
+func (c *concatLastRResult) ROutput() linalg.Vector {
+	return c.ROutVec
+}
+
+func (c *concatLastRResult) Constant(rg autofunc.RGradient, g autofunc.Gradient) bool {
+	return false
+}
+
+func (c *concatLastRResult) PropagateRGradient(u, uR linalg.Vector, rg autofunc.RGradient,
+	g autofunc.Gradient) {
+	up := make([][]linalg.Vector, len(c.In.OutputSeqs()))
+	upR := make([][]linalg.Vector, len(c.In.OutputSeqs()))
+	var idx int
+	for i, seq := range c.In.OutputSeqs() {
+		up[i] = make([]linalg.Vector, len(seq))
+		upR[i] = make([]linalg.Vector, len(seq))
+		if len(seq) == 0 {
+			continue
+		}
+		for j, x := range seq[:len(seq)-1] {
+			up[i][j] = make(linalg.Vector, len(x))
+			upR[i][j] = make(linalg.Vector, len(x))
+		}
+		last := seq[len(seq)-1]
+		up[i][len(seq)-1] = u[idx : idx+len(last)]
+		upR[i][len(seq)-1] = uR[idx : idx+len(last)]
+		idx += len(last)
+	}
+	c.In.PropagateRGradient(up, upR, rg, g)
 }
