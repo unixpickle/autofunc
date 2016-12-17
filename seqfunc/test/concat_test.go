@@ -28,6 +28,32 @@ func (c *ConcatTestFunc) ApplySeqsR(rv autofunc.RVector, in seqfunc.RResult) seq
 	return seqfunc.ConcatInnerR(in, seqfunc.VarRResult(rv, ConcatSeqs), in)
 }
 
+type ConcatAllTestFunc struct{}
+
+func (p *ConcatAllTestFunc) Apply(in autofunc.Result) autofunc.Result {
+	s := seqfunc.VarResult(TestSeqs)
+	return autofunc.Concat(in, seqfunc.ConcatAll(s))
+}
+
+func (p *ConcatAllTestFunc) ApplyR(rv autofunc.RVector, in autofunc.RResult) autofunc.RResult {
+	s := seqfunc.VarRResult(rv, TestSeqs)
+	return autofunc.ConcatR(in, seqfunc.ConcatAllR(s))
+}
+
+type ConcatLastTestFunc struct{}
+
+func (c *ConcatLastTestFunc) Apply(in autofunc.Result) autofunc.Result {
+	seqs := append([][]*autofunc.Variable{{}}, TestSeqs...)
+	s := seqfunc.VarResult(seqs)
+	return autofunc.Concat(in, seqfunc.ConcatLast(s))
+}
+
+func (c *ConcatLastTestFunc) ApplyR(rv autofunc.RVector, in autofunc.RResult) autofunc.RResult {
+	seqs := append([][]*autofunc.Variable{{}}, TestSeqs...)
+	s := seqfunc.VarRResult(rv, seqs)
+	return autofunc.ConcatR(in, seqfunc.ConcatLastR(s))
+}
+
 func TestConcat(t *testing.T) {
 	sc := &functest.SeqRFuncChecker{
 		F:     &ConcatTestFunc{},
@@ -61,4 +87,57 @@ func TestConcatOutput(t *testing.T) {
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("expected %v got %v", expected, actual)
 	}
+}
+
+func TestConcatAllOutput(t *testing.T) {
+	in := [][]linalg.Vector{
+		{{1, 2}, {3, 4}},
+		{{5}, {6, 7, 8}, {9}},
+		{},
+		{{10, 11, 12, 13, 14, 15}},
+	}
+	inSeq := seqfunc.ConstResult(in)
+	actual := seqfunc.ConcatAll(inSeq).Output()
+	expected := make(linalg.Vector, 15)
+	for i := range expected {
+		expected[i] = float64(i) + 1
+	}
+	if expected.Copy().Scale(-1).Add(actual).MaxAbs() > 1e-6 {
+		t.Errorf("expected %v got %v", expected, actual)
+	}
+}
+
+func TestConcatAll(t *testing.T) {
+	checker := &functest.RFuncChecker{
+		F:     &ConcatAllTestFunc{},
+		Input: TestVars[0],
+		Vars:  TestVars,
+		RV:    TestRV,
+	}
+	checker.FullCheck(t)
+}
+
+func TestConcatLastOutput(t *testing.T) {
+	in := [][]linalg.Vector{
+		{{1, 2}, {3, 4}},
+		{{5}, {6, 7, 8}, {9}},
+		{},
+		{{10, 11, 12, 13, 14, 15}},
+	}
+	inSeq := seqfunc.ConstResult(in)
+	actual := seqfunc.ConcatLast(inSeq).Output()
+	expected := linalg.Vector([]float64{3, 4, 9, 10, 11, 12, 13, 14, 15})
+	if expected.Copy().Scale(-1).Add(actual).MaxAbs() > 1e-6 {
+		t.Errorf("expected %v got %v", expected, actual)
+	}
+}
+
+func TestConcatLast(t *testing.T) {
+	checker := &functest.RFuncChecker{
+		F:     &ConcatLastTestFunc{},
+		Input: TestVars[0],
+		Vars:  TestVars,
+		RV:    TestRV,
+	}
+	checker.FullCheck(t)
 }

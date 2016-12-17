@@ -140,6 +140,204 @@ func (c *concatInnerRResult) PropagateRGradient(u, uR [][]linalg.Vector,
 	}
 }
 
+type concatAllResult struct {
+	Input  Result
+	OutVec linalg.Vector
+}
+
+// ConcatAll joins all of the timesteps in all of the
+// sequences in to one packed autofunc.Result.
+// The packing is done as follows: first timesteps from
+// the same sequence are packed left to right, then the
+// packed vectors from each sequence are joined together
+// from the first sequence to the last.
+func ConcatAll(in Result) autofunc.Result {
+	var joined linalg.Vector
+	for _, seq := range in.OutputSeqs() {
+		for _, vec := range seq {
+			joined = append(joined, vec...)
+		}
+	}
+	return &concatAllResult{Input: in, OutVec: joined}
+}
+
+func (a *concatAllResult) Output() linalg.Vector {
+	return a.OutVec
+}
+
+func (a *concatAllResult) Constant(g autofunc.Gradient) bool {
+	return false
+}
+
+func (a *concatAllResult) PropagateGradient(u linalg.Vector, g autofunc.Gradient) {
+	var idx int
+	var splitUpstream [][]linalg.Vector
+	for _, outSeq := range a.Input.OutputSeqs() {
+		var splitSeq []linalg.Vector
+		for _, step := range outSeq {
+			splitSeq = append(splitSeq, u[idx:idx+len(step)])
+			idx += len(step)
+		}
+		splitUpstream = append(splitUpstream, splitSeq)
+	}
+	a.Input.PropagateGradient(splitUpstream, g)
+}
+
+type concatAllRResult struct {
+	Input   RResult
+	OutVec  linalg.Vector
+	ROutVec linalg.Vector
+}
+
+// ConcatAllR is like ConcatAll for RResults.
+func ConcatAllR(in RResult) autofunc.RResult {
+	var joined, joinedR linalg.Vector
+	rOut := in.ROutputSeqs()
+	for i, seq := range in.OutputSeqs() {
+		for j, vec := range seq {
+			joined = append(joined, vec...)
+			joinedR = append(joinedR, rOut[i][j]...)
+		}
+	}
+	return &concatAllRResult{Input: in, OutVec: joined, ROutVec: joinedR}
+}
+
+func (a *concatAllRResult) Output() linalg.Vector {
+	return a.OutVec
+}
+
+func (a *concatAllRResult) ROutput() linalg.Vector {
+	return a.ROutVec
+}
+
+func (a *concatAllRResult) Constant(rg autofunc.RGradient, g autofunc.Gradient) bool {
+	return false
+}
+
+func (a *concatAllRResult) PropagateRGradient(u, uR linalg.Vector, rg autofunc.RGradient,
+	g autofunc.Gradient) {
+	var idx int
+	var splitUpstream, splitUpstreamR [][]linalg.Vector
+	for _, outSeq := range a.Input.OutputSeqs() {
+		var splitSeq, splitSeqR []linalg.Vector
+		for _, step := range outSeq {
+			splitSeq = append(splitSeq, u[idx:idx+len(step)])
+			splitSeqR = append(splitSeqR, uR[idx:idx+len(step)])
+			idx += len(step)
+		}
+		splitUpstream = append(splitUpstream, splitSeq)
+		splitUpstreamR = append(splitUpstreamR, splitSeqR)
+	}
+	a.Input.PropagateRGradient(splitUpstream, splitUpstreamR, rg, g)
+}
+
+type concatLastResult struct {
+	OutVec linalg.Vector
+	In     Result
+}
+
+// ConcatLast concatenates the last timestep outputs of
+// all the sequences.
+//
+// Empty input sequences are ignored.
+func ConcatLast(in Result) autofunc.Result {
+	var joined linalg.Vector
+	for _, x := range in.OutputSeqs() {
+		if len(x) > 0 {
+			joined = append(joined, x[len(x)-1]...)
+		}
+	}
+	return &concatLastResult{
+		OutVec: joined,
+		In:     in,
+	}
+}
+
+func (c *concatLastResult) Output() linalg.Vector {
+	return c.OutVec
+}
+
+func (c *concatLastResult) Constant(g autofunc.Gradient) bool {
+	return false
+}
+
+func (c *concatLastResult) PropagateGradient(u linalg.Vector, g autofunc.Gradient) {
+	up := make([][]linalg.Vector, len(c.In.OutputSeqs()))
+	var idx int
+	for i, seq := range c.In.OutputSeqs() {
+		up[i] = make([]linalg.Vector, len(seq))
+		if len(seq) == 0 {
+			continue
+		}
+		for j, x := range seq[:len(seq)-1] {
+			up[i][j] = make(linalg.Vector, len(x))
+		}
+		last := seq[len(seq)-1]
+		up[i][len(seq)-1] = u[idx : idx+len(last)]
+		idx += len(last)
+	}
+	c.In.PropagateGradient(up, g)
+}
+
+type concatLastRResult struct {
+	OutVec  linalg.Vector
+	ROutVec linalg.Vector
+	In      RResult
+}
+
+// ConcatLastR is like ConcatLast for RResults.
+func ConcatLastR(in RResult) autofunc.RResult {
+	var joined, joinedR linalg.Vector
+	outSeqsR := in.ROutputSeqs()
+	for i, x := range in.OutputSeqs() {
+		if len(x) > 0 {
+			xR := outSeqsR[i]
+			joined = append(joined, x[len(x)-1]...)
+			joinedR = append(joinedR, xR[len(xR)-1]...)
+		}
+	}
+	return &concatLastRResult{
+		OutVec:  joined,
+		ROutVec: joinedR,
+		In:      in,
+	}
+}
+
+func (c *concatLastRResult) Output() linalg.Vector {
+	return c.OutVec
+}
+
+func (c *concatLastRResult) ROutput() linalg.Vector {
+	return c.ROutVec
+}
+
+func (c *concatLastRResult) Constant(rg autofunc.RGradient, g autofunc.Gradient) bool {
+	return false
+}
+
+func (c *concatLastRResult) PropagateRGradient(u, uR linalg.Vector, rg autofunc.RGradient,
+	g autofunc.Gradient) {
+	up := make([][]linalg.Vector, len(c.In.OutputSeqs()))
+	upR := make([][]linalg.Vector, len(c.In.OutputSeqs()))
+	var idx int
+	for i, seq := range c.In.OutputSeqs() {
+		up[i] = make([]linalg.Vector, len(seq))
+		upR[i] = make([]linalg.Vector, len(seq))
+		if len(seq) == 0 {
+			continue
+		}
+		for j, x := range seq[:len(seq)-1] {
+			up[i][j] = make(linalg.Vector, len(x))
+			upR[i][j] = make(linalg.Vector, len(x))
+		}
+		last := seq[len(seq)-1]
+		up[i][len(seq)-1] = u[idx : idx+len(last)]
+		upR[i][len(seq)-1] = uR[idx : idx+len(last)]
+		idx += len(last)
+	}
+	c.In.PropagateRGradient(up, upR, rg, g)
+}
+
 func shapesEqual(s1, s2 [][]linalg.Vector) bool {
 	if len(s1) != len(s2) {
 		return false
