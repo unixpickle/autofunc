@@ -324,3 +324,75 @@ func (o *outerProductRResult) PropagateRGradient(upstream, upstreamR linalg.Vect
 			rgrad, grad)
 	}
 }
+
+type transposeResult struct {
+	OutputVec linalg.Vector
+	In        Result
+	InRows    int
+	InCols    int
+}
+
+// Transpose transposes a row-major matrix.
+func Transpose(in Result, rows, cols int) Result {
+	return &transposeResult{
+		OutputVec: transposeVector(in.Output(), rows, cols),
+		In:        in,
+		InRows:    rows,
+		InCols:    cols,
+	}
+}
+
+func (t *transposeResult) Output() linalg.Vector {
+	return t.OutputVec
+}
+
+func (t *transposeResult) Constant(g Gradient) bool {
+	return t.In.Constant(g)
+}
+
+func (t *transposeResult) PropagateGradient(u linalg.Vector, g Gradient) {
+	uTrans := transposeVector(u, t.InCols, t.InRows)
+	t.In.PropagateGradient(uTrans, g)
+}
+
+type transposeRResult struct {
+	OutputVec  linalg.Vector
+	ROutputVec linalg.Vector
+	In         RResult
+	InRows     int
+	InCols     int
+}
+
+// TransposeR transposes a row-major matrix.
+func TransposeR(in RResult, rows, cols int) RResult {
+	return &transposeRResult{
+		OutputVec:  transposeVector(in.Output(), rows, cols),
+		ROutputVec: transposeVector(in.ROutput(), rows, cols),
+		In:         in,
+		InRows:     rows,
+		InCols:     cols,
+	}
+}
+
+func (t *transposeRResult) Output() linalg.Vector {
+	return t.OutputVec
+}
+
+func (t *transposeRResult) ROutput() linalg.Vector {
+	return t.ROutputVec
+}
+
+func (t *transposeRResult) Constant(rg RGradient, g Gradient) bool {
+	return t.In.Constant(rg, g)
+}
+
+func (t *transposeRResult) PropagateRGradient(u, uR linalg.Vector, rg RGradient, g Gradient) {
+	uTrans := transposeVector(u, t.InCols, t.InRows)
+	uTransR := transposeVector(uR, t.InCols, t.InRows)
+	t.In.PropagateRGradient(uTrans, uTransR, rg, g)
+}
+
+func transposeVector(vec linalg.Vector, rows, cols int) linalg.Vector {
+	m := &linalg.Matrix{Data: vec, Rows: rows, Cols: cols}
+	return m.Transpose().Data
+}

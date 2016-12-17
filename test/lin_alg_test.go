@@ -30,6 +30,16 @@ func (_ outerProductTest) ApplyR(rv RVector, in RResult) RResult {
 	return OuterProductR(vec1, in)
 }
 
+type transposeTest struct{}
+
+func (_ transposeTest) Apply(in Result) Result {
+	return Transpose(in, 3, 4)
+}
+
+func (_ transposeTest) ApplyR(rv RVector, in RResult) RResult {
+	return TransposeR(in, 3, 4)
+}
+
 func TestMatMulVecOutput(t *testing.T) {
 	res := matMulVecTest{}.Apply(linTranTestVec)
 	expected := []float64{19, 20, 36}
@@ -70,6 +80,29 @@ func TestOuterProductChecks(t *testing.T) {
 		F:     outerProductTest{},
 		Vars:  linTranTestVariables,
 		Input: linTranTestMat2.Data,
+		RV:    linTranTestRVec,
+	}
+	f.FullCheck(t)
+}
+
+func TestTransposeOutput(t *testing.T) {
+	trans := Transpose(linTranTestMat1.Data, 3, 4).Output()
+	expected := []float64{
+		1, 4, 7,
+		2, 5, 8,
+		3, -6, -10,
+		3, 1, 4,
+	}
+	if trans.Copy().Scale(-1).Add(expected).MaxAbs() > 1e-5 {
+		t.Errorf("expected %v got %v", expected, trans)
+	}
+}
+
+func TestTransposeChecks(t *testing.T) {
+	f := &functest.RFuncChecker{
+		F:     transposeTest{},
+		Vars:  linTranTestVariables,
+		Input: linTranTestMat1.Data,
 		RV:    linTranTestRVec,
 	}
 	f.FullCheck(t)
