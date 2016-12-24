@@ -396,3 +396,159 @@ func transposeVector(vec linalg.Vector, rows, cols int) linalg.Vector {
 	m := &linalg.Matrix{Data: vec, Rows: rows, Cols: cols}
 	return m.Transpose().Data
 }
+
+type scaleRowsResult struct {
+	Matrix    Result
+	Scalers   Result
+	OutputVec linalg.Vector
+}
+
+// ScaleRows scales each row of a row-major matrix by a
+// different scaler.
+//
+// The number of entries in the matrix must be divisible
+// by the number of scalers.
+func ScaleRows(mat, scalers Result) Result {
+	matData := mat.Output()
+	scalerData := scalers.Output()
+	if len(matData)%len(scalerData) != 0 {
+		panic("scaler count must divide entry count")
+	}
+	cols := len(matData) / len(scalerData)
+	res := make(linalg.Vector, len(matData))
+	copy(res, matData)
+	for i, scaler := range scalerData {
+		dest := res[i*cols : (i+1)*cols]
+		blas64.Scal(len(dest), scaler, blas64.Vector{
+			Data: dest,
+			Inc:  1,
+		})
+	}
+	return &scaleRowsResult{
+		Matrix:    mat,
+		Scalers:   scalers,
+		OutputVec: res,
+	}
+}
+
+func (s *scaleRowsResult) Output() linalg.Vector {
+	return s.OutputVec
+}
+
+func (s *scaleRowsResult) Constant(g Gradient) bool {
+	return s.Scalers.Constant(g) && s.Matrix.Constant(g)
+}
+
+func (s *scaleRowsResult) PropagateGradient(u linalg.Vector, g Gradient) {
+	matData := s.Matrix.Output()
+	if !s.Scalers.Constant(g) {
+		su := make(linalg.Vector, len(s.Scalers.Output()))
+		cols := len(matData) / len(su)
+		for row := range su {
+			matRow := matData[row*cols : (row+1)*cols]
+			upstreamRow := u[row*cols : (row+1)*cols]
+			su[row] = matRow.DotFast(upstreamRow)
+		}
+		s.Scalers.PropagateGradient(su, g)
+	}
+	if !s.Matrix.Constant(g) {
+		scalers := s.Scalers.Output()
+		cols := len(matData) / len(scalers)
+		for row, scaler := range scalers {
+			blas64.Scal(cols, scaler, blas64.Vector{
+				Data: u[row*cols : (row+1)*cols],
+				Inc:  1,
+			})
+		}
+		s.Matrix.PropagateGradient(u, g)
+	}
+}
+
+type scaleRowsRResult struct {
+	Matrix     RResult
+	Scalers    RResult
+	OutputVec  linalg.Vector
+	ROutputVec linalg.Vector
+}
+
+// ScaleRowsR is like ScaleRows but for RResults.
+func ScaleRowsR(mat, scalers RResult) RResult {
+	matData := mat.Output()
+	matDataR := mat.ROutput()
+	scalerData := scalers.Output()
+	scalerDataR := scalers.ROutput()
+	if len(matData)%len(scalerData) != 0 {
+		panic("scaler count must divide entry count")
+	}
+	cols := len(matData) / len(scalerData)
+	res := make(linalg.Vector, len(matData))
+	resR := make(linalg.Vector, len(matData))
+	copy(res, matData)
+	for i, scaler := range scalerData {
+		scalerR := scalerDataR[i]
+		dest := res[i*cols : (i+1)*cols]
+		destR := resR[i*cols : (i+1)*cols]
+		source := matData[i*cols : (i+1)*cols]
+		sourceR := matDataR[i*cols : (i+1)*cols]
+		blas64.Scal(len(dest), scaler, blas64.Vector{
+			Data: dest,
+			Inc:  1,
+		})
+		destR.Add(source).Scale(scalerR)
+		destR.Add(sourceR.Copy().Scale(scaler))
+	}
+	return &scaleRowsRResult{
+		Matrix:     mat,
+		Scalers:    scalers,
+		OutputVec:  res,
+		ROutputVec: resR,
+	}
+}
+
+func (s *scaleRowsRResult) Output() linalg.Vector {
+	return s.OutputVec
+}
+
+func (s *scaleRowsRResult) ROutput() linalg.Vector {
+	return s.ROutputVec
+}
+
+func (s *scaleRowsRResult) Constant(rg RGradient, g Gradient) bool {
+	return s.Scalers.Constant(rg, g) && s.Matrix.Constant(rg, g)
+}
+
+func (s *scaleRowsRResult) PropagateRGradient(u, uR linalg.Vector, rg RGradient, g Gradient) {
+	matData := s.Matrix.Output()
+	matDataR := s.Matrix.ROutput()
+
+	if !s.Scalers.Constant(rg, g) {
+		su := make(linalg.Vector, len(s.Scalers.Output()))
+		suR := make(linalg.Vector, len(su))
+		cols := len(matData) / len(su)
+		for row := range su {
+			matRow := matData[row*cols : (row+1)*cols]
+			matRowR := matDataR[row*cols : (row+1)*cols]
+			upstreamRow := u[row*cols : (row+1)*cols]
+			upstreamRowR := uR[row*cols : (row+1)*cols]
+			su[row] = matRow.DotFast(upstreamRow)
+			suR[row] = matRowR.DotFast(upstreamRow) + matRow.DotFast(upstreamRowR)
+		}
+		s.Scalers.PropagateRGradient(su, suR, rg, g)
+	}
+	if !s.Matrix.Constant(rg, g) {
+		scalers := s.Scalers.Output()
+		scalersR := s.Scalers.ROutput()
+		cols := len(matData) / len(scalers)
+		for row, scaler := range scalers {
+			scalerR := scalersR[row]
+			blas64.Scal(cols, scaler, blas64.Vector{
+				Data: uR[row*cols : (row+1)*cols],
+				Inc:  1,
+			})
+			uRow := u[row*cols : (row+1)*cols]
+			uR[row*cols : (row+1)*cols].Add(uRow.Copy().Scale(scalerR))
+			blas64.Scal(cols, scaler, blas64.Vector{Data: uRow, Inc: 1})
+		}
+		s.Matrix.PropagateRGradient(u, uR, rg, g)
+	}
+}

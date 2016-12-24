@@ -40,6 +40,18 @@ func (_ transposeTest) ApplyR(rv RVector, in RResult) RResult {
 	return TransposeR(in, 3, 4)
 }
 
+type scaleRowsTest struct {
+	scaler *Variable
+}
+
+func (s *scaleRowsTest) Apply(in Result) Result {
+	return ScaleRows(in, s.scaler)
+}
+
+func (s *scaleRowsTest) ApplyR(rv RVector, in RResult) RResult {
+	return ScaleRowsR(in, NewRVariable(s.scaler, rv))
+}
+
 func TestMatMulVecOutput(t *testing.T) {
 	res := matMulVecTest{}.Apply(linTranTestVec)
 	expected := []float64{19, 20, 36}
@@ -101,6 +113,32 @@ func TestTransposeOutput(t *testing.T) {
 func TestTransposeChecks(t *testing.T) {
 	f := &functest.RFuncChecker{
 		F:     transposeTest{},
+		Vars:  linTranTestVariables,
+		Input: linTranTestMat1.Data,
+		RV:    linTranTestRVec,
+	}
+	f.FullCheck(t)
+}
+
+func TestScaleRowsOutput(t *testing.T) {
+	mat := &Variable{Vector: []float64{1, 2, 3, 4, 5, 6}}
+	scalers := &Variable{Vector: []float64{-1, -2}}
+	actual := ScaleRows(mat, scalers).Output()
+	expected := []float64{-1, -2, -3, -8, -10, -12}
+	if actual.Copy().Scale(-1).Add(expected).MaxAbs() > 1e-5 {
+		t.Errorf("expected %v got %v", expected, actual)
+	}
+	scalers = &Variable{Vector: []float64{-1, -2, -3}}
+	actual = ScaleRows(mat, scalers).Output()
+	expected = []float64{-1, -2, -6, -8, -15, -18}
+	if actual.Copy().Scale(-1).Add(expected).MaxAbs() > 1e-5 {
+		t.Errorf("expected %v got %v", expected, actual)
+	}
+}
+
+func TestScaleRowsChecks(t *testing.T) {
+	f := &functest.RFuncChecker{
+		F:     &scaleRowsTest{linTranTestMat2.Data},
 		Vars:  linTranTestVariables,
 		Input: linTranTestMat1.Data,
 		RV:    linTranTestRVec,
