@@ -110,6 +110,25 @@ func TestCosOutput(t *testing.T) {
 	}
 }
 
+func TestNormOutput(t *testing.T) {
+	vec := &Variable{Vector: []float64{3, 4}}
+	expected := 5.0
+	actual := Norm{}.Apply(vec)
+	if math.Abs(actual.Output()[0]-expected) > 1e-5 {
+		t.Errorf("expected %v got %v", expected, actual)
+	}
+}
+
+func TestNorm(t *testing.T) {
+	f := &functest.RFuncChecker{
+		F:     Norm{},
+		Vars:  mathFuncTestVars,
+		Input: mathFuncTestVec,
+		RV:    mathFuncTestRVec,
+	}
+	f.FullCheck(t)
+}
+
 func BenchmarkSoftmaxTemp(b *testing.B) {
 	rand.Seed(123)
 	inputVec := make(linalg.Vector, 3000)
@@ -143,5 +162,31 @@ func BenchmarkSoftmaxNoTemp(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		res := s.Apply(inputVar)
 		res.PropagateGradient(inputVec, bogusGrad)
+	}
+}
+
+func BenchmarkSquaredNorm(b *testing.B) {
+	vec := make(linalg.Vector, 500)
+	for i := range vec {
+		vec[i] = rand.NormFloat64()
+	}
+	v := &Variable{Vector: vec}
+	g := NewGradient([]*Variable{v})
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		SquaredNorm{}.Apply(v).PropagateGradient([]float64{1}, g)
+	}
+}
+
+func BenchmarkNorm(b *testing.B) {
+	vec := make(linalg.Vector, 500)
+	for i := range vec {
+		vec[i] = rand.NormFloat64()
+	}
+	v := &Variable{Vector: vec}
+	g := NewGradient([]*Variable{v})
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		Norm{}.Apply(v).PropagateGradient([]float64{1}, g)
 	}
 }

@@ -3,6 +3,7 @@ package autofunc
 import (
 	"math"
 
+	"github.com/gonum/blas/blas64"
 	"github.com/unixpickle/num-analysis/linalg"
 )
 
@@ -195,6 +196,88 @@ func (_ SquaredNorm) Apply(r Result) Result {
 
 func (_ SquaredNorm) ApplyR(v RVector, r RResult) RResult {
 	return SumAllR(SquareR(r))
+}
+
+// Norm is a Func and RFunc which computes the Euclidean
+// norm of its input.
+type Norm struct{}
+
+func (_ Norm) Apply(r Result) Result {
+	v := blas64.Vector{Data: r.Output(), Inc: 1}
+	output := blas64.Nrm2(len(v.Data), v)
+	return &normResult{
+		Input:     r,
+		OutputVec: []float64{output},
+	}
+}
+
+func (_ Norm) ApplyR(rv RVector, r RResult) RResult {
+	v := blas64.Vector{Data: r.Output(), Inc: 1}
+	output := blas64.Nrm2(len(v.Data), v)
+	rout := (1 / output) * r.Output().DotFast(r.ROutput())
+	return &normRResult{
+		Input:      r,
+		OutputVec:  []float64{output},
+		ROutputVec: []float64{rout},
+	}
+}
+
+type normResult struct {
+	Input     Result
+	OutputVec linalg.Vector
+}
+
+func (n *normResult) Output() linalg.Vector {
+	return n.OutputVec
+}
+
+func (n *normResult) Constant(g Gradient) bool {
+	return n.Input.Constant(g)
+}
+
+func (n *normResult) PropagateGradient(u linalg.Vector, g Gradient) {
+	if n.Constant(g) {
+		return
+	}
+	scale := u[0] / n.Output()[0]
+	downstream := make(linalg.Vector, len(n.Input.Output()))
+	copy(downstream, n.Input.Output())
+	blas64.Scal(len(downstream), scale, blas64.Vector{Data: downstream, Inc: 1})
+	n.Input.PropagateGradient(downstream, g)
+}
+
+type normRResult struct {
+	Input      RResult
+	OutputVec  linalg.Vector
+	ROutputVec linalg.Vector
+}
+
+func (n *normRResult) Output() linalg.Vector {
+	return n.OutputVec
+}
+
+func (n *normRResult) ROutput() linalg.Vector {
+	return n.ROutputVec
+}
+
+func (n *normRResult) Constant(rg RGradient, g Gradient) bool {
+	return n.Input.Constant(rg, g)
+}
+
+func (n *normRResult) PropagateRGradient(u, uR linalg.Vector, rg RGradient, g Gradient) {
+	if n.Constant(rg, g) {
+		return
+	}
+	scale := u[0] / n.Output()[0]
+	scaleR := -u[0]*n.ROutput()[0]/(n.Output()[0]*n.Output()[0]) + uR[0]/n.Output()[0]
+	downstream := make(linalg.Vector, len(n.Input.Output()))
+	downstreamR := make(linalg.Vector, len(n.Input.Output()))
+	copy(downstream, n.Input.Output())
+	copy(downstreamR, downstream)
+	blas64.Scal(len(downstream), scale, blas64.Vector{Data: downstream, Inc: 1})
+	blas64.Scal(len(downstream), scaleR, blas64.Vector{Data: downstreamR, Inc: 1})
+	downstreamR.Add(n.Input.ROutput().Copy().Scale(scale))
+	n.Input.PropagateRGradient(downstream, downstreamR, rg, g)
 }
 
 // Sigmoid is a Func and RFunc which applies
