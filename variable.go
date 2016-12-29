@@ -1,12 +1,39 @@
 package autofunc
 
-import "github.com/unixpickle/num-analysis/linalg"
+import (
+	"bytes"
+	"encoding/binary"
+
+	"github.com/unixpickle/num-analysis/linalg"
+	"github.com/unixpickle/serializer"
+)
+
+func init() {
+	var v Variable
+	serializer.RegisterTypedDeserializer(v.SerializerType(), DeserializeVariable)
+}
 
 // A Variable is a numerical vector, wrapped in
 // a struct so pointers to it can be used as a
 // map key in things like Gradient.
 type Variable struct {
 	Vector linalg.Vector
+}
+
+// DeserializeVariable deserializes a Variable.
+func DeserializeVariable(d []byte) (*Variable, error) {
+	reader := bytes.NewBuffer(d)
+	var size uint64
+	if err := binary.Read(reader, binary.LittleEndian, &size); err != nil {
+		return nil, err
+	}
+	vec := make(linalg.Vector, int(size))
+	for i := range vec {
+		if err := binary.Read(reader, binary.LittleEndian, &vec[i]); err != nil {
+			return nil, err
+		}
+	}
+	return &Variable{Vector: vec}, nil
 }
 
 func (v *Variable) Output() linalg.Vector {
@@ -22,6 +49,22 @@ func (v *Variable) PropagateGradient(upstream linalg.Vector, grad Gradient) {
 func (v *Variable) Constant(g Gradient) bool {
 	_, variable := g[v]
 	return !variable
+}
+
+// SerializerType returns the unique ID used to serialize
+// a Variable using the serializer package.
+func (v *Variable) SerializerType() string {
+	return "github.com/unixpickle/autofunc.Variable"
+}
+
+// Serialize serializes the variable.
+func (v *Variable) Serialize() ([]byte, error) {
+	var w bytes.Buffer
+	binary.Write(&w, binary.LittleEndian, uint64(len(v.Vector)))
+	for _, x := range v.Vector {
+		binary.Write(&w, binary.LittleEndian, x)
+	}
+	return w.Bytes(), nil
 }
 
 // An RVariable is a variable that knows about
