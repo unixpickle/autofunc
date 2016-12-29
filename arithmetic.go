@@ -933,3 +933,21 @@ func AddLogDomainR(v1, v2 RResult) RResult {
 	expSum := AddR(exp1, exp2)
 	return AddScalerR(Log{}.ApplyR(rv, expSum), maxVal)
 }
+
+// SumAllLogDomain is a numerically-stable way to exponentiate
+// the components of a vector, add the results, then take the
+// natural log.
+func SumAllLogDomain(v Result) Result {
+	maxVal := v.Output().MaxAbs()
+	exp := Exp{}.Apply(AddScaler(v, -maxVal))
+	sum := SumAll(exp)
+	return AddScaler(Log{}.Apply(sum), maxVal)
+}
+
+// SumAllLogDomainR is like SumAllLogDomain but for RResults.
+func SumAllLogDomainR(v RResult) RResult {
+	maxVal := v.Output().MaxAbs()
+	exp := Exp{}.ApplyR(nil, AddScalerR(v, -maxVal))
+	sum := SumAllR(exp)
+	return AddScalerR(Log{}.ApplyR(nil, sum), maxVal)
+}
