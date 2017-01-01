@@ -1,6 +1,8 @@
 package autofunc
 
 import (
+	"fmt"
+
 	"github.com/gonum/blas"
 	"github.com/gonum/blas/blas64"
 	"github.com/unixpickle/num-analysis/linalg"
@@ -21,7 +23,8 @@ type LinTran struct {
 // Apply performs matrix multiplication (i.e. m*in).
 func (l *LinTran) Apply(in Result) Result {
 	if len(in.Output()) != l.Cols {
-		panic("input length is invalid")
+		panic(fmt.Sprintf("input length should be %d but got %d",
+			l.Cols, len(in.Output())))
 	}
 	return l.Batch(in, 1)
 }
@@ -29,7 +32,8 @@ func (l *LinTran) Apply(in Result) Result {
 // ApplyR is like Apply but for RResults.
 func (l *LinTran) ApplyR(v RVector, in RResult) RResult {
 	if len(in.Output()) != l.Cols {
-		panic("input length is invalid")
+		panic(fmt.Sprintf("input length should be %d but got %d",
+			l.Cols, len(in.Output())))
 	}
 	rData := NewRVariable(l.Data, v)
 	return &linTranRResult{
@@ -44,6 +48,10 @@ func (l *LinTran) ApplyR(v RVector, in RResult) RResult {
 // Batch performs matrix multiplication on all
 // of the input vectors.
 func (l *LinTran) Batch(in Result, n int) Result {
+	if l.Cols*n != len(in.Output()) {
+		panic(fmt.Sprintf("input length should be %d but got %d",
+			l.Cols*n, len(in.Output())))
+	}
 	return &linTranResult{
 		Matrix:    l,
 		Input:     in,
@@ -54,6 +62,10 @@ func (l *LinTran) Batch(in Result, n int) Result {
 // BatchR performs matrix multiplication on all
 // of the input vectors.
 func (l *LinTran) BatchR(v RVector, in RResult, n int) RResult {
+	if l.Cols*n != len(in.Output()) {
+		panic(fmt.Sprintf("input length should be %d but got %d",
+			l.Cols*n, len(in.Output())))
+	}
 	rData := NewRVariable(l.Data, v)
 	return &linTranRResult{
 		Matrix:     l,
