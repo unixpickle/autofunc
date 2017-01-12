@@ -47,7 +47,7 @@ type arithmeticTestFunc struct{}
 func (_ arithmeticTestFunc) Apply(r Result) Result {
 	sq1 := Square(Mul(Scale(Add(r, arithmeticTestVec1), -2), arithmeticTestVec2))
 	sum1 := AddScaler(Add(Mul(sq1, arithmeticTestVec3), Scale(arithmeticTestVec4, -0.5)), 2)
-	powed := Pow(Pow(Inverse(sum1), 2), 1/3.0)
+	powed := Div(Pow(Pow(Inverse(sum1), 2), 1/3.0), sum1)
 	allSum := SumAll(AddFirst(powed, arithmeticTestVec1))
 	allSum = Sub(allSum, SumAllLogDomain(arithmeticTestVec2))
 	return ScaleFirst(AddLogDomain(arithmeticTestVec1, arithmeticTestVec2), allSum)
@@ -60,7 +60,7 @@ func (_ arithmeticTestFunc) ApplyR(v RVector, r RResult) RResult {
 	rVec4 := NewRVariable(arithmeticTestVec4, v)
 	sq1 := SquareR(MulR(ScaleR(AddR(r, rVec1), -2), rVec2))
 	sum1 := AddScalerR(AddR(MulR(sq1, rVec3), ScaleR(rVec4, -0.5)), 2)
-	powed := PowR(PowR(InverseR(sum1), 2), 1/3.0)
+	powed := DivR(PowR(PowR(InverseR(sum1), 2), 1/3.0), sum1)
 	allSum := SumAllR(AddFirstR(powed, rVec1))
 	allSum = SubR(allSum, SumAllLogDomainR(rVec2))
 	return ScaleFirstR(AddLogDomainR(rVec1, rVec2), allSum)

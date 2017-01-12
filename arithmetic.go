@@ -375,6 +375,57 @@ func (r *rresultProduct) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 }
 
+type resultQuotient struct {
+	OutputVec linalg.Vector
+	Num       Result
+	Denom     Result
+}
+
+// Div computes a/b (elementwise).
+func Div(a, b Result) Result {
+	aOut := a.Output()
+	bOut := b.Output()
+	out := make(linalg.Vector, len(aOut))
+	for i, x := range aOut {
+		out[i] = x / bOut[i]
+	}
+	return &resultQuotient{
+		OutputVec: out,
+		Num:       a,
+		Denom:     b,
+	}
+}
+
+func (r *resultQuotient) Output() linalg.Vector {
+	return r.OutputVec
+}
+
+func (r *resultQuotient) Constant(g Gradient) bool {
+	return r.Num.Constant(g) && r.Denom.Constant(g)
+}
+
+func (r *resultQuotient) PropagateGradient(u linalg.Vector, g Gradient) {
+	denomOut := r.Denom.Output()
+	if !r.Num.Constant(g) {
+		uScaled := u.Copy()
+		for i, x := range denomOut {
+			uScaled[i] /= x
+		}
+		r.Num.PropagateGradient(uScaled, g)
+	}
+	if !r.Denom.Constant(g) {
+		for i, x := range r.OutputVec {
+			u[i] *= -x / denomOut[i]
+		}
+		r.Denom.PropagateGradient(u, g)
+	}
+}
+
+// DivR computes a/b (elementwise).
+func DivR(a, b RResult) RResult {
+	return MulR(a, InverseR(b))
+}
+
 type scaledResult struct {
 	OutputVec linalg.Vector
 	Scaler    float64
