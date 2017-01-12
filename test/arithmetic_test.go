@@ -49,7 +49,7 @@ func (_ arithmeticTestFunc) Apply(r Result) Result {
 	sum1 := AddScaler(Add(Mul(sq1, arithmeticTestVec3), Scale(arithmeticTestVec4, -0.5)), 2)
 	powed := Pow(Pow(Inverse(sum1), 2), 1/3.0)
 	allSum := SumAll(AddFirst(powed, arithmeticTestVec1))
-	allSum = Add(allSum, SumAllLogDomain(arithmeticTestVec2))
+	allSum = Sub(allSum, SumAllLogDomain(arithmeticTestVec2))
 	return ScaleFirst(AddLogDomain(arithmeticTestVec1, arithmeticTestVec2), allSum)
 }
 
@@ -62,7 +62,7 @@ func (_ arithmeticTestFunc) ApplyR(v RVector, r RResult) RResult {
 	sum1 := AddScalerR(AddR(MulR(sq1, rVec3), ScaleR(rVec4, -0.5)), 2)
 	powed := PowR(PowR(InverseR(sum1), 2), 1/3.0)
 	allSum := SumAllR(AddFirstR(powed, rVec1))
-	allSum = AddR(allSum, SumAllLogDomainR(rVec2))
+	allSum = SubR(allSum, SumAllLogDomainR(rVec2))
 	return ScaleFirstR(AddLogDomainR(rVec1, rVec2), allSum)
 }
 
@@ -101,7 +101,7 @@ func TestSumAllLogDomainOutput(t *testing.T) {
 	}
 	expected := math.Log(sum)
 	actual := SumAllLogDomain(in)
-	if math.Abs(actual.Output()[0] - expected) > 1e-8 {
+	if math.Abs(actual.Output()[0]-expected) > 1e-8 {
 		t.Errorf("expected %v but got %v", expected, actual.Output()[0])
 	}
 }

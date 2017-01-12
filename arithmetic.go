@@ -95,6 +95,92 @@ func (r *rresultSum) PropagateRGradient(upstream, upstreamR linalg.Vector,
 	}
 }
 
+type resultDiff struct {
+	OutputVec linalg.Vector
+	R1        Result
+	R2        Result
+}
+
+// Sub subtracts b from a (componentwise).
+func Sub(a, b Result) Result {
+	aOut := a.Output()
+	bOut := b.Output()
+	res := make(linalg.Vector, len(aOut))
+	for i, x := range aOut {
+		res[i] = x - bOut[i]
+	}
+	return &resultDiff{
+		OutputVec: res,
+		R1:        a,
+		R2:        b,
+	}
+}
+
+func (r *resultDiff) Output() linalg.Vector {
+	return r.OutputVec
+}
+
+func (r *resultDiff) Constant(g Gradient) bool {
+	return r.R1.Constant(g) && r.R2.Constant(g)
+}
+
+func (r *resultDiff) PropagateGradient(u linalg.Vector, g Gradient) {
+	if !r.R1.Constant(g) {
+		r.R1.PropagateGradient(u.Copy(), g)
+	}
+	if !r.R2.Constant(g) {
+		r.R2.PropagateGradient(u.Scale(-1), g)
+	}
+}
+
+type rresultDiff struct {
+	OutputVec  linalg.Vector
+	ROutputVec linalg.Vector
+	R1         RResult
+	R2         RResult
+}
+
+// SubR subtracts b from a (componentwise).
+func SubR(a, b RResult) RResult {
+	aOut := a.Output()
+	bOut := b.Output()
+	aOutR := a.ROutput()
+	bOutR := b.ROutput()
+	res := make(linalg.Vector, len(aOut))
+	resR := make(linalg.Vector, len(aOut))
+	for i, x := range aOut {
+		res[i] = x - bOut[i]
+		resR[i] = aOutR[i] - bOutR[i]
+	}
+	return &rresultDiff{
+		OutputVec:  res,
+		ROutputVec: resR,
+		R1:         a,
+		R2:         b,
+	}
+}
+
+func (r *rresultDiff) Output() linalg.Vector {
+	return r.OutputVec
+}
+
+func (r *rresultDiff) ROutput() linalg.Vector {
+	return r.ROutputVec
+}
+
+func (r *rresultDiff) Constant(rg RGradient, g Gradient) bool {
+	return r.R1.Constant(rg, g) && r.R2.Constant(rg, g)
+}
+
+func (r *rresultDiff) PropagateRGradient(u, uR linalg.Vector, rg RGradient, g Gradient) {
+	if !r.R1.Constant(rg, g) {
+		r.R1.PropagateRGradient(u.Copy(), uR.Copy(), rg, g)
+	}
+	if !r.R2.Constant(rg, g) {
+		r.R2.PropagateRGradient(u.Scale(-1), uR.Scale(-1), rg, g)
+	}
+}
+
 type addScalerResult struct {
 	OutputVec linalg.Vector
 	Scaler    float64

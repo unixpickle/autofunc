@@ -19,6 +19,9 @@ func TestVariableSerialize(t *testing.T) {
 		t.Fatal(err)
 	}
 	obj, err := serializer.DeserializeWithType(data)
+	if err != nil {
+		t.Fatal(err)
+	}
 	newV := obj.(*Variable)
 	if len(newV.Vector) != len(v.Vector) {
 		t.Fatal("lengths don't match")
